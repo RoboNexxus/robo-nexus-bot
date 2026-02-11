@@ -22,19 +22,54 @@ class GitHubIntegration(commands.Cog):
         self.github_token = os.getenv('GITHUB_TOKEN')  # GitHub Personal Access Token or Organization token
         self.repo_owner = os.getenv('GITHUB_OWNER', 'robo-nexus')  # GitHub organization or username
         
-        # Multiple repositories to monitor
-        self.repositories = [
-            "robo-nexus-bot",           # Bot code repository
-            "Robo-Nexus-Website-Dev"    # Website repository
-        ]
+        # Repositories will be fetched dynamically from GitHub
+        self.repositories = []
+        
+        # Fetch repositories on initialization
+        if self.github_token:
+            self._fetch_repositories()
         
         self.last_commit_check = datetime.now()
         
         # Start commit monitoring
-        if self.github_token:
+        if self.github_token and self.repositories:
             self.check_commits.start()
         
         logger.info(f"GitHub integration initialized for {len(self.repositories)} repositories")
+    
+    def _fetch_repositories(self):
+        """Fetch all repositories from the organization"""
+        try:
+            headers = {
+                'Authorization': f'token {self.github_token}',
+                'Accept': 'application/vnd.github.v3+json'
+            }
+            
+            # Fetch organization repositories
+            url = f"https://api.github.com/orgs/{self.repo_owner}/repos"
+            params = {
+                'type': 'all',  # Get all repos (public and private)
+                'per_page': 100  # Get up to 100 repos
+            }
+            
+            response = requests.get(url, headers=headers, params=params, timeout=10)
+            
+            if response.status_code == 200:
+                repos = response.json()
+                self.repositories = [repo['name'] for repo in repos]
+                logger.info(f"Fetched {len(self.repositories)} repositories from {self.repo_owner}")
+                logger.info(f"Repositories: {', '.join(self.repositories)}")
+            else:
+                logger.error(f"Failed to fetch repositories: {response.status_code}")
+                # Fallback to default repositories
+                self.repositories = ["robo-nexus-bot", "Robo-Nexus-Website-Dev"]
+                logger.info(f"Using fallback repositories: {', '.join(self.repositories)}")
+                
+        except Exception as e:
+            logger.error(f"Error fetching repositories: {e}")
+            # Fallback to default repositories
+            self.repositories = ["robo-nexus-bot", "Robo-Nexus-Website-Dev"]
+            logger.info(f"Using fallback repositories: {', '.join(self.repositories)}")
     
     def is_dev(self, user_id: int) -> bool:
         """Check if user is a developer"""
