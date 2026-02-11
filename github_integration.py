@@ -19,8 +19,8 @@ class GitHubIntegration(commands.Cog):
     
     def __init__(self, bot):
         self.bot = bot
-        self.github_token = os.getenv('GITHUB_TOKEN')  # Optional GitHub token
-        self.repo_owner = "AtharvM02222"  # Your GitHub username
+        self.github_token = os.getenv('GITHUB_TOKEN')  # GitHub Personal Access Token or Organization token
+        self.repo_owner = os.getenv('GITHUB_OWNER', 'robo-nexus')  # GitHub organization or username
         
         # Multiple repositories to monitor
         self.repositories = [

@@ -22,6 +22,10 @@ class Config:
     BOT_NAME = os.getenv('BOT_NAME', 'Robo Nexus')
     BIRTHDAY_CHECK_TIME = os.getenv('BIRTHDAY_CHECK_TIME', '09:00')
     
+    # GitHub Integration Configuration
+    GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')  # GitHub Personal Access Token
+    GITHUB_OWNER = os.getenv('GITHUB_OWNER', 'robo-nexus')  # GitHub organization or username
+    
     @classmethod
     def validate(cls):
         """Validate that required configuration is present"""

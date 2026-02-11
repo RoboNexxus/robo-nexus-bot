@@ -58,17 +58,17 @@ class RoboNexusBirthdayBot(commands.Bot):
             await self.load_extension('welcome_system')
             logger.info("Command cogs loaded successfully")
             
-            # Sync slash commands
+            # Sync slash commands (only once)
             if Config.GUILD_ID:
                 # Sync to specific guild for faster updates during development
                 guild = discord.Object(id=int(Config.GUILD_ID))
                 self.tree.copy_global_to(guild=guild)
-                await self.tree.sync(guild=guild)
-                logger.info(f"Slash commands synced to guild {Config.GUILD_ID}")
+                synced = await self.tree.sync(guild=guild)
+                logger.info(f"Slash commands synced to guild {Config.GUILD_ID}: {len(synced)} commands")
             else:
                 # Sync globally (takes up to 1 hour to propagate)
-                await self.tree.sync()
-                logger.info("Slash commands synced globally")
+                synced = await self.tree.sync()
+                logger.info(f"Slash commands synced globally: {len(synced)} commands")
             
             logger.info("Bot setup completed successfully")
             
@@ -151,17 +151,16 @@ class RoboNexusBirthdayBot(commands.Bot):
             birthdays: List of birthday dictionaries
         """
         try:
-            # For now, use a default channel (you can configure this later)
+            # Get the configured birthday channel from database
+            birthday_channel_id = self.db_manager.get_birthday_channel(guild.id)
             birthday_channel = None
             
-            # Look for a suitable channel
-            for channel in guild.text_channels:
-                if any(keyword in channel.name.lower() for keyword in ['birthday', 'celebration', 'general']):
-                    birthday_channel = channel
-                    break
+            if birthday_channel_id:
+                birthday_channel = guild.get_channel(birthday_channel_id)
             
+            # If no configured channel or channel not found, log warning
             if not birthday_channel:
-                logger.warning(f"No suitable birthday channel found in guild {guild.name}")
+                logger.warning(f"No birthday channel configured for guild {guild.name}. Use /set_birthday_channel to configure.")
                 return
             
             # Send birthday message for each user
@@ -176,12 +175,17 @@ class RoboNexusBirthdayBot(commands.Bot):
                         member = guild.get_member(user_id)
                     
                     if member:
-                        # Create birthday message
-                        birthday_message = f"🎉🎂 **HAPPY BIRTHDAY {member.mention}!** 🎂🎉\n\nEveryone wish them a fantastic day! 🎈🎁🥳"
+                        # Create birthday message with @everyone mention
+                        # Note: @everyone as string won't ping, but it's visible. 
+                        # To actually ping everyone, the bot needs "Mention Everyone" permission
+                        birthday_message = f"@everyone\n\n🎉🎂 **HAPPY BIRTHDAY {member.mention}!** 🎂🎉\n\nEveryone wish them a fantastic day! 🎈🎁🥳"
                         
-                        # Send to birthday channel
-                        await birthday_channel.send(birthday_message)
-                        logger.info(f"Birthday message sent for {member.display_name} in {guild.name}")
+                        # Send to configured birthday channel with allowed_mentions to enable @everyone
+                        await birthday_channel.send(
+                            birthday_message,
+                            allowed_mentions=discord.AllowedMentions(everyone=True)
+                        )
+                        logger.info(f"Birthday message sent for {member.display_name} in {guild.name} to channel {birthday_channel.name}")
                         
                         # Add a small delay between messages to avoid rate limits
                         await asyncio.sleep(1)

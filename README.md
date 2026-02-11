@@ -1,70 +1,125 @@
-# Robo Nexus Birthday Bot 🎉
+# Robo Nexus Bot 🎉
 
-A Discord bot for managing birthday celebrations in the Robo Nexus server. Automatically sends birthday messages and allows members to register their birthdays.
+A comprehensive Discord bot for the Robo Nexus robotics community with birthday tracking, member verification, auction system, and GitHub integration.
 
-## 🚀 **DEPLOYED ON RAILWAY - 24/7 OPERATION**
+## 🚀 **DEPLOYED ON REPLIT - 24/7 OPERATION**
 
-This bot is designed for Railway deployment and runs 24/7 without requiring your computer to stay on.
+This bot runs 24/7 on Replit with PostgreSQL database and automatic uptime monitoring.
 
 ## Features
 
-- 🎂 Birthday registration with flexible date formats
-- 🎉 Automatic daily birthday notifications at 9:00 AM
-- 📅 Birthday lookup and management commands
-- 👋 **Enhanced Welcome System with 3-stage verification**
-- 📧 **Gmail collection for team communications**
-- 🔗 **Social media links collection (GitHub, LinkedIn, YouTube, Spotify)**
-- 🎓 **Smart class role assignment (6, 7, 8, 9, 10, 11, 12)**
-- 👤 **Complete member profile storage and management**
-- 🔧 Admin configuration for birthday and welcome channels
-- 💾 Persistent SQLite database storage
-- ☁️ Railway cloud deployment ready
-- 🤖 Administrator permissions for full functionality
+### 🎂 Birthday System
+- Birthday registration with flexible date formats (MM-DD, MM/DD, with or without year)
+- Automatic daily birthday notifications at 9:00 AM with @everyone mention
+- Chronologically sorted upcoming birthdays with countdown indicators
+- Birthday lookup and management commands
+- Admin-configurable announcement channel
 
-## Quick Start
+### 👋 Welcome & Verification System
+- Multi-stage DM-based verification for new members
+- Collects: Name, Class (6-12), Birthday, Email, Phone, Social Links
+- Smart class recognition (understands "Class 10", "10th grade", "ten", etc.)
+- Automatic class role assignment
+- Complete member profile storage and management
+- Restricts new members to self-roles channel until verified
 
-### 1. **Deploy to Railway (Recommended)**
+### 🏷️ Auction System
+- Create auction listings with starting price and buy-now option
+- Real-time bidding system with bid tracking
+- Auction statistics and history
+- View your auctions and bids
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template)
+### 🔧 GitHub Integration
+- Automatic commit monitoring (checks every 5 minutes)
+- Create GitHub issues from Discord
+- View recent commits and repository statistics
+- Supports organization repositories (robo-nexus)
 
-**Or follow the detailed [DEPLOYMENT.md](DEPLOYMENT.md) guide**
+### 🤖 Admin Tools
+- Channel configuration for birthdays, welcome, and self-roles
+- Member profile management and export
+- Manual verification for members
+- Verification statistics (excludes bots)
+- Data reset and management commands
 
-### 2. **Local Testing (Optional)**
+## Quick Start on Replit
 
+### 1. **Fork/Import Repository**
+1. Go to [Replit](https://replit.com)
+2. Click "Create Repl" → "Import from GitHub"
+3. Paste your repository URL
+4. Click "Import from GitHub"
+
+### 2. **Configure Secrets**
+Click the **Secrets** tab (🔒 lock icon) and add:
+
+```
+DISCORD_TOKEN=your_discord_bot_token_here
+GUILD_ID=1403310542030114898
+DATABASE_URL=your_postgresql_connection_string
+GITHUB_TOKEN=your_github_token_here
+GITHUB_OWNER=robo-nexus
+```
+
+### 3. **Run Setup**
 ```bash
-# Clone and setup
-git clone <your-repo>
-cd robo-nexus-birthday-bot
+python setup_replit.py
+```
 
-# Install dependencies
-pip install -r requirements.txt
+This will:
+- Check PostgreSQL connection
+- Create all database tables
+- Migrate existing data
+- Verify configuration
 
-# Configure environment
-cp .env.example .env
-# Edit .env with your bot token and server ID
-
-# Run locally
+### 4. **Start Bot**
+Click the **Run** button or:
+```bash
 python main.py
+```
+
+### 5. **Configure in Discord**
+```
+/set_birthday_channel #announcements
+/set_welcome_channel #welcome
+/set_self_roles_channel #self-roles
 ```
 
 ## Bot Commands
 
-### 👥 **User Commands**
-- `/register_birthday` - Register your birthday
+### 👥 User Commands
+- `/register_birthday <date>` - Register your birthday
 - `/my_birthday` - Check your registered birthday
-- `/check_birthday` - Look up someone's birthday
-- `/upcoming_birthdays` - See all upcoming birthdays
+- `/upcoming_birthdays` - See upcoming birthdays (sorted chronologically)
+- `/check_birthday @user` - Look up someone's birthday
 - `/remove_birthday` - Remove your birthday
-- `/birthday_help` - Show all commands
+- `/birthday_collect <date>` - Register birthday in self-roles channel
 
-### ⚙️ **Admin Commands**
+### 🏷️ Auction Commands
+- `/create_auction` - Create a new auction listing
+- `/bid <auction_id> <amount>` - Place a bid
+- `/buy_now <auction_id>` - Buy item at buy-now price
+- `/my_auctions` - View your auction listings
+- `/auction_stats` - View auction statistics
+
+### 🔧 GitHub Commands
+- `/repo_list` - List monitored repositories
+- `/recent_commits [repository]` - Show recent commits
+- `/repo_stats [repository]` - Show repository statistics
+- `/create_issue` - Create a GitHub issue from Discord
+
+### ⚙️ Admin Commands
 - `/set_birthday_channel` - Set birthday announcement channel
-- `/birthday_config` - View bot configuration
 - `/set_welcome_channel` - Set welcome notifications channel
-- `/set_self_roles_channel` - Set self-roles channel for new members
+- `/set_self_roles_channel` - Set verification channel
+- `/birthday_config` - View birthday system configuration
 - `/welcome_config` - View welcome system configuration
-- `/view_profile` - View a user's complete profile
-- `/manual_verify` - Manually verify a user with name, class, and email
+- `/view_profile @user` - View a user's complete profile
+- `/update_profile @user` - Update a user's profile
+- `/manual_verify @user` - Manually verify a member
+- `/export_profiles` - Export all profiles to CSV
+- `/verification_stats` - View verification statistics
+- `/purge <count>` - Delete messages (1-100)
 
 ## 📅 Supported Date Formats
 
@@ -76,39 +131,59 @@ python main.py
 ## 🎉 How It Works
 
 ### Birthday System
-1. **Setup:** Admin uses `/set_birthday_channel` to configure announcement channel
-2. **Registration:** Users register birthdays with `/register_birthday`
-3. **Daily Check:** Bot automatically checks for birthdays at 9:00 AM
-4. **Announcements:** Sends messages like: "Hey Robo Nexus, it's @username's birthday today! 🎉"
+1. Admin configures announcement channel with `/set_birthday_channel`
+2. Users register birthdays with `/register_birthday` or `/birthday_collect`
+3. Bot checks for birthdays daily at 9:00 AM
+4. Sends birthday messages to announcements with @everyone mention
+5. `/upcoming_birthdays` shows next birthdays with countdown
 
-### Welcome & Profile System
-1. **New Member Joins:** User gets access only to self-roles channel
-2. **Stage 1 - Basic Info:** Bot DMs asking for name and class (6-12)
-3. **Stage 2 - Gmail:** Collects Gmail address for team communications
-4. **Stage 3 - Social Links:** Optional GitHub, LinkedIn, YouTube, Spotify links
-5. **Smart Recognition:** Understands "Class 10", "10th grade", "ten", etc.
-6. **Profile Storage:** Complete member profiles saved for team management
-7. **Auto-Role Assignment:** Assigns appropriate class role automatically
-8. **Full Access:** User gets access to all server channels
+### Welcome & Verification System
+1. New member joins → Restricted to self-roles channel only
+2. Bot sends DM requesting name and class (6-12)
+3. Collects birthday (required)
+4. Collects email (optional)
+5. Collects phone (optional)
+6. Collects social links (optional)
+7. Assigns class role automatically
+8. Grants full server access
+
+### Auction System
+1. Create auction with starting price and optional buy-now price
+2. Members place bids (must be higher than current bid)
+3. Use buy-now to instantly purchase
+4. Track your auctions and bids
+5. View auction statistics
+
+### GitHub Integration
+1. Bot monitors organization repositories every 5 minutes
+2. Sends commit notifications to dev channel
+3. Create issues directly from Discord
+4. View repository stats and recent commits
 
 ## 🔧 Configuration
 
-### Environment Variables (Railway)
+### Required Secrets (Replit)
 
 ```
 DISCORD_TOKEN=your_bot_token_here
 GUILD_ID=1403310542030114898
-DATABASE_PATH=birthdays.db
-BOT_NAME=Robo Nexus
-BIRTHDAY_CHECK_TIME=09:00
+DATABASE_URL=postgresql://postgres:password@helium/heliumdb?sslmode=disable
+```
+
+### Optional Secrets (GitHub Integration)
+
+```
+GITHUB_TOKEN=your_github_token_here
+GITHUB_OWNER=robo-nexus
 ```
 
 ### Discord Bot Setup
 
 1. **Create Discord Application:**
    - Go to [Discord Developer Portal](https://discord.com/developers/applications)
-   - Create new application named "Robo Nexus"
+   - Create new application named "Robo Nexus Bot"
    - Go to Bot section → Create bot → Copy token
+   - Enable "Server Members Intent" and "Message Content Intent"
 
 2. **Invite Bot to Server:**
    - Go to OAuth2 → URL Generator
@@ -116,87 +191,122 @@ BIRTHDAY_CHECK_TIME=09:00
    - Select: `Administrator` permissions
    - Use generated URL to invite bot
 
-3. **Configure in Discord:**
-   - Use `/set_birthday_channel` to set announcement channel
-   - Test with `/birthday_help`
+3. **Configure Channels:**
+   ```
+   /set_birthday_channel #announcements
+   /set_welcome_channel #welcome
+   /set_self_roles_channel #self-roles
+   ```
 
-## 📊 Railway Deployment Benefits
+## 📊 Replit Deployment Benefits
 
-- ✅ **24/7 Operation** - No need to keep your computer on
-- ✅ **Free Tier** - 500 hours/month (covers 24/7 usage)
+- ✅ **24/7 Operation** - Always On feature keeps bot running
+- ✅ **PostgreSQL Database** - Persistent data storage
 - ✅ **Auto-restart** - Bot restarts automatically if it crashes
-- ✅ **Persistent Database** - SQLite data persists across restarts
-- ✅ **Easy Updates** - Push to GitHub → auto-deploy
-- ✅ **Monitoring** - Full logs and metrics dashboard
+- ✅ **Easy Updates** - Edit code and restart
+- ✅ **Built-in Monitoring** - Logs and console output
+- ✅ **Web Server** - Keep-alive endpoint for uptime monitoring
 
 ## 🛠️ Development
 
 ### Project Structure
 
 ```
-robo-nexus-birthday-bot/
+robo-nexus-bot/
 ├── main.py              # Entry point
-├── bot.py               # Main bot class
+├── bot.py               # Main bot class with birthday scheduler
 ├── config.py            # Configuration management
-├── database.py          # SQLite database manager
+├── database.py          # Database wrapper (Supabase)
+├── postgres_db.py       # PostgreSQL database interface
+├── supabase_api.py      # Supabase API client
 ├── date_parser.py       # Date parsing utilities
-├── commands.py          # User slash commands
-├── admin_commands.py    # Admin slash commands
+├── commands.py          # Birthday commands
+├── admin_commands.py    # Admin commands
+├── auction.py           # Auction system
+├── welcome_system.py    # Welcome & verification system
+├── github_integration.py # GitHub integration
+├── analytics.py         # Analytics and statistics
 ├── help_commands.py     # Help system
+├── dev_commands.py      # Developer commands
+├── keep_alive.py        # Web server for uptime
 ├── requirements.txt     # Python dependencies
-├── railway.toml         # Railway deployment config
-├── .env                 # Environment variables (local)
-└── DEPLOYMENT.md        # Deployment guide
+├── replit.nix          # Replit configuration
+└── setup_replit.py     # One-command setup script
 ```
 
 ### Adding New Features
 
 1. **New Commands:** Add to appropriate `*_commands.py` file
-2. **Database Changes:** Update `database.py` schema
-3. **Configuration:** Add to `config.py` and `.env.example`
-4. **Deploy:** Push to GitHub (auto-deploys to Railway)
+2. **Database Changes:** Update `postgres_db.py` schema
+3. **Configuration:** Add to `config.py` and Replit Secrets
+4. **Test:** Run locally in Replit
+5. **Deploy:** Restart bot
 
 ## 🔍 Troubleshooting
 
 **Bot not responding:**
-- Check Railway logs for errors
-- Verify environment variables are set
+- Check Replit console for errors
+- Verify Secrets are set correctly
 - Ensure bot has Administrator permissions
+- Check member intents are enabled: `/check_intents`
 
 **Commands not appearing:**
 - Wait 5-10 minutes for slash command sync
-- Restart bot deployment on Railway
+- Restart bot in Replit
 - Check bot is in your server
 
 **Birthday notifications not working:**
-- Verify `/set_birthday_channel` is configured
+- Configure channel: `/set_birthday_channel #announcements`
 - Check bot has permissions in announcement channel
-- Confirm users have registered birthdays
+- Verify users have registered birthdays
+- Test manually: `/test_birthday`
+
+**Verification not working:**
+- Check member intents: `/check_intents`
+- Configure channels: `/set_welcome_channel` and `/set_self_roles_channel`
+- Verify bot can send DMs to members
+
+**GitHub integration not working:**
+- Add GITHUB_TOKEN to Replit Secrets
+- Run: `python setup_github_org.py` to test
+- Check token has organization access
+- Verify: `/repo_list`
 
 ## 📈 Monitoring
 
-**Railway Dashboard:**
+**Replit Console:**
 - View real-time logs
-- Monitor resource usage
-- Track deployment history
-- Check uptime statistics
+- Monitor bot status
+- Check for errors
+- Track command usage
 
 **Discord:**
 - Bot online status
 - Command response times
 - Daily birthday announcements
+- Commit notifications
 
-## 🎯 Future Enhancements
+## 📚 Documentation
 
-- 🎊 Birthday role assignments
-- 🎁 Birthday reminder DMs
-- 📊 Birthday statistics
-- 🎨 Custom birthday messages
-- 🌍 Timezone support
-- 📅 Birthday countdown features
+- `BOT_DOCUMENTATION.md` - Complete feature documentation
+- `SETUP_CHECKLIST.md` - Step-by-step setup guide
+- `GITHUB_ORG_SETUP.md` - GitHub integration guide
+- `FIXES_APPLIED.md` - Recent bug fixes
+- `ALL_FIXES_SUMMARY.md` - Complete changes summary
+
+## 🎯 Features Highlights
+
+- ✅ Chronologically sorted upcoming birthdays with countdown
+- ✅ Birthday messages to configured announcements channel with @everyone
+- ✅ Verification statistics exclude bots
+- ✅ Birthday saves during self-roles verification
+- ✅ GitHub organization repository support
+- ✅ Multi-stage member verification with DMs
+- ✅ Auction system with bidding and buy-now
+- ✅ Complete profile management and export
 
 ---
 
 **Built for the Robo Nexus Discord community 🤖**
 
-**Deployed on Railway ⚡ | Running 24/7 ☁️ | Administrator Permissions 🔐**
+**Deployed on Replit ⚡ | Running 24/7 ☁️ | PostgreSQL Database 💾 | Administrator Permissions 🔐**

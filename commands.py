@@ -280,9 +280,11 @@ class BirthdayCommands(commands.Cog):
                 await interaction.followup.send(embed=embed)
                 return
             
-            # Create birthday list
-            birthday_list = []
-            for birthday_record in all_birthdays[:10]:  # Limit to 10 for display
+            # Create birthday list with sorting
+            from datetime import datetime, date
+            birthday_data = []
+            
+            for birthday_record in all_birthdays:
                 try:
                     # Extract user_id and birthday from the record
                     if isinstance(birthday_record, dict):
@@ -295,8 +297,27 @@ class BirthdayCommands(commands.Cog):
                     # Try to fetch member from Discord API (more reliable than get_member)
                     user = await interaction.guild.fetch_member(user_id)
                     if user:
-                        formatted_date = DateParser.format_birthday(birthday_date)
-                        birthday_list.append(f"🎂 **{user.display_name}** - {formatted_date}")
+                        # Parse birthday to get month and day
+                        parsed_date = DateParser.parse_birthday(birthday_date)
+                        if parsed_date:
+                            # Calculate days until next birthday
+                            today = date.today()
+                            next_birthday = date(today.year, parsed_date.month, parsed_date.day)
+                            
+                            # If birthday already passed this year, use next year
+                            if next_birthday < today:
+                                next_birthday = date(today.year + 1, parsed_date.month, parsed_date.day)
+                            
+                            days_until = (next_birthday - today).days
+                            
+                            formatted_date = DateParser.format_birthday(birthday_date)
+                            birthday_data.append({
+                                'user': user,
+                                'formatted_date': formatted_date,
+                                'days_until': days_until,
+                                'month': parsed_date.month,
+                                'day': parsed_date.day
+                            })
                 except discord.NotFound:
                     # User not in this guild, skip
                     continue
@@ -305,23 +326,39 @@ class BirthdayCommands(commands.Cog):
                     logger.warning(f"Error processing birthday record {birthday_record}: {e}")
                     continue
             
-            if not birthday_list:
+            if not birthday_data:
                 embed = discord.Embed(
                     title="📅 No Birthdays in This Server",
                     description="No registered birthdays found for members of this server.",
                     color=discord.Color.orange()
                 )
             else:
+                # Sort by days until birthday (soonest first)
+                birthday_data.sort(key=lambda x: x['days_until'])
+                
+                # Create formatted list
+                birthday_list = []
+                for bd in birthday_data[:10]:  # Limit to 10 for display
+                    days_text = ""
+                    if bd['days_until'] == 0:
+                        days_text = " 🎉 **TODAY!**"
+                    elif bd['days_until'] == 1:
+                        days_text = " (Tomorrow)"
+                    elif bd['days_until'] <= 7:
+                        days_text = f" (in {bd['days_until']} days)"
+                    
+                    birthday_list.append(f"🎂 **{bd['user'].display_name}** - {bd['formatted_date']}{days_text}")
+                
                 embed = discord.Embed(
                     title="🎉 Upcoming Birthdays in Robo Nexus",
                     description="\n".join(birthday_list),
                     color=discord.Color.purple()
                 )
                 
-                if len(all_birthdays) > 10:
-                    embed.set_footer(text=f"Showing first 10 of {len(all_birthdays)} registered birthdays")
+                if len(birthday_data) > 10:
+                    embed.set_footer(text=f"Showing next 10 of {len(birthday_data)} registered birthdays")
                 else:
-                    embed.set_footer(text=f"{len(birthday_list)} registered birthdays")
+                    embed.set_footer(text=f"{len(birthday_data)} registered birthdays")
             
             await interaction.followup.send(embed=embed)
             

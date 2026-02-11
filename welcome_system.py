@@ -1190,10 +1190,12 @@ class WelcomeSystem(commands.Cog):
                 return
             
             # Register the birthday
-# #             db_manager = self.bot.db_manager
-#             success = await db_manager.register_birthday(interaction.user.id, birthday)
+            from database import add_birthday
+            # Convert date object to MM-DD string format
+            birthday_string = birthday.strftime('%m-%d')
+            birthday_success = add_birthday(interaction.user.id, birthday_string)
             
-            if success:
+            if birthday_success:
                 formatted_date = DateParser.format_birthday(birthday)
                 
                 # Also update user profile if it exists
@@ -1647,13 +1649,27 @@ class WelcomeSystem(commands.Cog):
             for profile in all_profiles:
                 user_id = profile.get('user_id')
                 
-                # Get birthday if registered
+                # Get birthday from profile or birthday system
                 birthday_str = "Not registered"
                 try:
-# #                     birthday = await self.bot.db_manager.get_birthday(int(user_id))
-                    if birthday:
-                        birthday_str = birthday.strftime("%B %d")
-                except:
+                    # First try to get from profile
+                    profile_birthday = profile.get('birthday')
+                    if profile_birthday:
+                        # Parse the birthday string
+                        from date_parser import DateParser
+                        parsed_birthday = DateParser.parse_birthday(profile_birthday)
+                        if parsed_birthday:
+                            birthday_str = parsed_birthday.strftime("%B %d")
+                    else:
+                        # Try to get from birthday system
+                        from database import get_birthday
+                        birthday = get_birthday(int(user_id))
+                        if birthday:
+                            parsed_birthday = DateParser.parse_birthday(birthday)
+                            if parsed_birthday:
+                                birthday_str = parsed_birthday.strftime("%B %d")
+                except Exception as e:
+                    logger.warning(f"Error getting birthday for user {user_id}: {e}")
                     pass
                 
                 # Get social links

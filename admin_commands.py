@@ -251,8 +251,8 @@ class AdminCommands(commands.Cog):
                     logger.warning(f"Error processing user {user_id}: {e}")
                     continue
             
-            # Get total server members
-            total_members = interaction.guild.member_count
+            # Get total server members (excluding bots)
+            total_members = sum(1 for member in interaction.guild.members if not member.bot)
             unverified_count = total_members - verified_count - pending_count
             
             # Create embed
