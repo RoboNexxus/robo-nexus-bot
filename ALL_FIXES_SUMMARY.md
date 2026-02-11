@@ -126,7 +126,7 @@ Or in Discord:
 
 Add to Replit Secrets:
 ```
-GITHUB_TOKEN=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
+GITHUB_TOKEN=your_new_github_token_here
 GITHUB_OWNER=robo-nexus
 ```
 

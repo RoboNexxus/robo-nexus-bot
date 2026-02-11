@@ -1,0 +1,92 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# Environment Variables - NEVER COMMIT THESE!
+.env
+.env.local
+.env.*.local
+*.env
+
+# Secrets and Tokens - NEVER COMMIT THESE!
+secrets.json
+secrets.yaml
+*secret*
+*token*
+*key*
+*.pem
+*.key
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+birthdays.db
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Replit
+.replit
+.upm/
+.cache/
+.config/
+
+# Bot Data
+bot_data/*.json
+analytics.json
+deploy_info.json
+
+# Temporary Files
+*.tmp
+*.bak
+*.backup
+temp/
+tmp/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Documentation (if contains sensitive info)
+# Uncomment if needed:
+# PRIVATE_*.md
+# *_PRIVATE.md
