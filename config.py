@@ -24,7 +24,7 @@ class Config:
     
     # GitHub Integration Configuration
     GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')  # GitHub Personal Access Token
-    GITHUB_OWNER = os.getenv('GITHUB_OWNER', 'robo-nexus')  # GitHub organization or username
+    GITHUB_OWNER = os.getenv('GITHUB_OWNER', 'RoboNexxus')  # GitHub organization or username
     
     @classmethod
     def validate(cls):

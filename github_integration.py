@@ -40,6 +40,8 @@ class GitHubIntegration(commands.Cog):
     def _fetch_repositories(self):
         """Fetch all repositories from the organization"""
         try:
+            logger.info(f"Attempting to fetch repositories from organization: {self.repo_owner}")
+            
             headers = {
                 'Authorization': f'token {self.github_token}',
                 'Accept': 'application/vnd.github.v3+json'
@@ -52,21 +54,45 @@ class GitHubIntegration(commands.Cog):
                 'per_page': 100  # Get up to 100 repos
             }
             
+            logger.info(f"Making request to: {url}")
             response = requests.get(url, headers=headers, params=params, timeout=10)
+            
+            logger.info(f"Response status code: {response.status_code}")
             
             if response.status_code == 200:
                 repos = response.json()
                 self.repositories = [repo['name'] for repo in repos]
-                logger.info(f"Fetched {len(self.repositories)} repositories from {self.repo_owner}")
+                logger.info(f"✅ Successfully fetched {len(self.repositories)} repositories from {self.repo_owner}")
                 logger.info(f"Repositories: {', '.join(self.repositories)}")
+            elif response.status_code == 404:
+                logger.error(f"❌ Organization '{self.repo_owner}' not found or token doesn't have access")
+                logger.error(f"Response: {response.text}")
+                # Fallback to default repositories
+                self.repositories = ["robo-nexus-bot", "Robo-Nexus-Website-Dev"]
+                logger.info(f"Using fallback repositories: {', '.join(self.repositories)}")
+            elif response.status_code == 401:
+                logger.error(f"❌ Authentication failed - token is invalid or expired")
+                logger.error(f"Response: {response.text}")
+                # Fallback to default repositories
+                self.repositories = ["robo-nexus-bot", "Robo-Nexus-Website-Dev"]
+                logger.info(f"Using fallback repositories: {', '.join(self.repositories)}")
+            elif response.status_code == 403:
+                logger.error(f"❌ Access forbidden - token not authorized for organization")
+                logger.error(f"Response: {response.text}")
+                logger.error(f"Go to https://github.com/settings/tokens and click 'Configure SSO' to authorize")
+                # Fallback to default repositories
+                self.repositories = ["robo-nexus-bot", "Robo-Nexus-Website-Dev"]
+                logger.info(f"Using fallback repositories: {', '.join(self.repositories)}")
             else:
-                logger.error(f"Failed to fetch repositories: {response.status_code}")
+                logger.error(f"❌ Failed to fetch repositories: HTTP {response.status_code}")
+                logger.error(f"Response: {response.text}")
                 # Fallback to default repositories
                 self.repositories = ["robo-nexus-bot", "Robo-Nexus-Website-Dev"]
                 logger.info(f"Using fallback repositories: {', '.join(self.repositories)}")
                 
         except Exception as e:
-            logger.error(f"Error fetching repositories: {e}")
+            logger.error(f"❌ Error fetching repositories: {e}")
+            logger.exception("Full traceback:")
             # Fallback to default repositories
             self.repositories = ["robo-nexus-bot", "Robo-Nexus-Website-Dev"]
             logger.info(f"Using fallback repositories: {', '.join(self.repositories)}")
