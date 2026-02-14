@@ -130,8 +130,11 @@ class StatsChannel(commands.Cog):
                 date_ranges=[DateRange(start_date="365daysAgo", end_date="today")],
                 metrics=[Metric(name="screenPageViews")],
             )
+            
+            logger.info(f"Requesting GA data for property: {self.ga_property_id}")
             total_response = client.run_report(total_request)
             total_views = int(total_response.rows[0].metric_values[0].value) if total_response.rows else 0
+            logger.info(f"Successfully fetched {total_views} total views")
             
             # Format numbers for display
             def format_number(num):
@@ -347,13 +350,69 @@ class StatsChannel(commands.Cog):
                 ephemeral=True
             )
     
+    @app_commands.command(name="check_analytics_config", description="[ADMIN] Check Google Analytics configuration")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def check_analytics_config(self, interaction: discord.Interaction):
+        """Check if Google Analytics is properly configured"""
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            status = []
+            
+            # Check Property ID
+            if self.ga_property_id:
+                status.append(f"✅ GA_PROPERTY_ID: Set ({self.ga_property_id})")
+            else:
+                status.append("❌ GA_PROPERTY_ID: Not set")
+            
+            # Check credentials
+            if self.ga_credentials_json:
+                status.append("✅ GOOGLE_CREDENTIALS_JSON: Set")
+                try:
+                    creds = json.loads(self.ga_credentials_json)
+                    status.append(f"   📧 Service Account: {creds.get('client_email', 'Unknown')}")
+                except:
+                    status.append("   ⚠️ Warning: JSON may be invalid")
+            elif self.ga_credentials_path:
+                status.append(f"✅ GOOGLE_APPLICATION_CREDENTIALS: Set ({self.ga_credentials_path})")
+            else:
+                status.append("❌ Credentials: Not set")
+            
+            # Try to create client
+            status.append("\n🔍 Testing connection...")
+            try:
+                client = self.get_ga_client()
+                if client:
+                    status.append("✅ GA Client: Created successfully")
+                    
+                    # Try to fetch stats
+                    stats = await self.fetch_website_stats()
+                    status.append(f"✅ Stats Fetch: Success")
+                    status.append(f"   📊 Total Views: {stats.get('total_views', 'N/A')}")
+                else:
+                    status.append("❌ GA Client: Failed to create")
+            except Exception as e:
+                status.append(f"❌ Error: {str(e)[:200]}")
+            
+            await interaction.followup.send(
+                "**Google Analytics Configuration Check**\n\n" + "\n".join(status),
+                ephemeral=True
+            )
+            
+        except Exception as e:
+            logger.error(f"Error in check_analytics_config: {e}")
+            await interaction.followup.send(
+                f"❌ Error checking config: {str(e)}",
+                ephemeral=True
+            )
+    
     @app_commands.command(name="refresh_stats", description="[ADMIN] Manually refresh website stats")
     @app_commands.checks.has_permissions(administrator=True)
     async def refresh_stats(self, interaction: discord.Interaction):
         """Manually trigger stats update"""
-        await interaction.response.defer(ephemeral=True)
-        
         try:
+            await interaction.response.defer(ephemeral=True)
+            
             # Trigger the update task
             await self.update_stats_channels()
             
@@ -362,12 +421,18 @@ class StatsChannel(commands.Cog):
                 ephemeral=True
             )
             
+        except discord.errors.NotFound:
+            # Interaction expired, but update still happened
+            logger.warning("Interaction expired during refresh_stats, but update completed")
         except Exception as e:
             logger.error(f"Error in refresh_stats command: {e}")
-            await interaction.followup.send(
-                f"❌ Error refreshing stats: {str(e)}",
-                ephemeral=True
-            )
+            try:
+                await interaction.followup.send(
+                    f"❌ Error refreshing stats: {str(e)}",
+                    ephemeral=True
+                )
+            except:
+                pass
 
 
 async def setup(bot):
