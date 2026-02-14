@@ -17,6 +17,7 @@ from google.analytics.data_v1beta.types import (
     Dimension,
     Metric,
     RunReportRequest,
+    RunRealtimeReportRequest,
 )
 from google.oauth2 import service_account
 
@@ -37,12 +38,16 @@ class StatsChannel(commands.Cog):
         self.ga_credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
         self.ga_credentials_json = os.getenv('GOOGLE_CREDENTIALS_JSON')  # Direct JSON string
         
+        # GitHub Configuration
+        self.github_org_username = "robonexxusaisg46"  # Organization GitHub profile
+        
         # Store channel IDs per guild
         self.stats_channels = {}
         
         # Cache for stats to avoid excessive API calls
         self.cached_stats = {
             "total_views": "Loading...",
+            "github_org_views": "Loading...",
             "last_updated": None
         }
         
@@ -124,10 +129,10 @@ class StatsChannel(commands.Cog):
                     "total_views": "Error"
                 }
             
-            # Get all-time views (last 365 days as approximation)
+            # Get all-time views (since the beginning)
             total_request = RunReportRequest(
                 property=f"properties/{self.ga_property_id}",
-                date_ranges=[DateRange(start_date="365daysAgo", end_date="today")],
+                date_ranges=[DateRange(start_date="2020-01-01", end_date="today")],
                 metrics=[Metric(name="screenPageViews")],
             )
             
@@ -168,6 +173,38 @@ class StatsChannel(commands.Cog):
                 "total_views": "Error"
             }
     
+    async def fetch_github_org_views(self) -> str:
+        """Fetch GitHub organization profile views from komarev badge"""
+        try:
+            url = f"https://komarev.com/ghpvc/?username={self.github_org_username}"
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as response:
+                    if response.status == 200:
+                        # The badge SVG contains the view count
+                        svg_content = await response.text()
+                        
+                        # Extract the number from the SVG
+                        import re
+                        match = re.search(r'>(\d+(?:,\d+)*)</text>', svg_content)
+                        if match:
+                            views = match.group(1).replace(',', '')
+                            logger.info(f"Fetched GitHub org profile views: {views}")
+                            
+                            # Update cache
+                            self.cached_stats["github_org_views"] = views
+                            return views
+                        else:
+                            logger.warning("Could not parse GitHub org views from badge")
+                            return self.cached_stats.get("github_org_views", "N/A")
+                    else:
+                        logger.error(f"Failed to fetch GitHub org views: HTTP {response.status}")
+                        return self.cached_stats.get("github_org_views", "Error")
+                        
+        except Exception as e:
+            logger.error(f"Error fetching GitHub org profile views: {e}")
+            return self.cached_stats.get("github_org_views", "Error")
+    
     async def create_stats_channel(self, guild: discord.Guild, category: discord.CategoryChannel) -> Optional[discord.VoiceChannel]:
         """Create a voice channel to display website stats"""
         try:
@@ -175,7 +212,7 @@ class StatsChannel(commands.Cog):
             stats = await self.fetch_website_stats()
             
             # Create channel name with total views
-            channel_name = f"📊 Total Views: {stats['total_views']}"
+            channel_name = f"📊 Total Website Views: {stats['total_views']}"
             
             # Create voice channel
             channel = await guild.create_voice_channel(
@@ -198,7 +235,7 @@ class StatsChannel(commands.Cog):
             logger.error(f"Error creating stats channel: {e}")
             return None
     
-    @tasks.loop(minutes=5)  # Update every 5 minutes
+    @tasks.loop(minutes=1)  # Update every 1 minute
     async def update_stats_channels(self):
         """Update all stats channels with current data"""
         try:
@@ -208,26 +245,54 @@ class StatsChannel(commands.Cog):
                 if not category:
                     continue
                 
-                # Find existing stats channel or create new one
-                stats_channel = None
+                # Find existing website stats channel
+                website_channel = None
+                github_org_channel = None
+                
                 for channel in category.voice_channels:
-                    if channel.name.startswith("📊 Total Views:"):
-                        stats_channel = channel
-                        break
+                    if channel.name.startswith("📊 Total Website Views:") or channel.name.startswith("📊 Total Views:"):
+                        website_channel = channel
+                    elif channel.name.startswith("🔷 RoboNexxus GitHub Views:"):
+                        github_org_channel = channel
                 
-                if not stats_channel:
-                    stats_channel = await self.create_stats_channel(guild, category)
-                    if stats_channel:
-                        self.stats_channels[guild.id] = stats_channel.id
+                # Create website stats channel if doesn't exist
+                if not website_channel:
+                    website_channel = await self.create_stats_channel(guild, category)
+                    if website_channel:
+                        self.stats_channels[guild.id] = website_channel.id
                 
-                # Update channel name with current stats
-                if stats_channel:
+                # Update website stats channel
+                if website_channel:
                     stats = await self.fetch_website_stats()
-                    new_name = f"📊 Total Views: {stats['total_views']}"
+                    new_name = f"📊 Total Website Views: {stats['total_views']}"
                     
-                    if stats_channel.name != new_name:
-                        await stats_channel.edit(name=new_name)
-                        logger.info(f"Updated stats channel in {guild.name}: {new_name}")
+                    if website_channel.name != new_name:
+                        await website_channel.edit(name=new_name)
+                        logger.info(f"Updated website stats channel in {guild.name}: {new_name}")
+                
+                # Create GitHub org stats channel if doesn't exist
+                if not github_org_channel:
+                    github_org_views = await self.fetch_github_org_views()
+                    github_org_channel = await guild.create_voice_channel(
+                        name=f"🔷 RoboNexxus GitHub Views: {github_org_views}",
+                        category=category,
+                        reason="RoboNexxus GitHub profile views display"
+                    )
+                    await github_org_channel.set_permissions(
+                        guild.default_role,
+                        connect=False,
+                        view_channel=True
+                    )
+                    logger.info(f"Created RoboNexxus GitHub stats channel in {guild.name}")
+                
+                # Update GitHub org stats channel
+                if github_org_channel:
+                    github_org_views = await self.fetch_github_org_views()
+                    new_github_org_name = f"🔷 RoboNexxus GitHub Views: {github_org_views}"
+                    
+                    if github_org_channel.name != new_github_org_name:
+                        await github_org_channel.edit(name=new_github_org_name)
+                        logger.info(f"Updated RoboNexxus GitHub stats channel in {guild.name}: {new_github_org_name}")
                         
         except Exception as e:
             logger.error(f"Error updating stats channels: {e}")
@@ -258,7 +323,7 @@ class StatsChannel(commands.Cog):
             # Check if stats channel already exists
             existing_channel = None
             for channel in category.voice_channels:
-                if channel.name.startswith("📊 Total Views:"):
+                if channel.name.startswith("📊 Total Website Views:") or channel.name.startswith("📊 Total Views:"):
                     existing_channel = channel
                     break
             
@@ -322,7 +387,7 @@ class StatsChannel(commands.Cog):
             # Find and delete stats channel
             deleted = False
             for channel in category.voice_channels:
-                if channel.name.startswith("📊 Total Views:"):
+                if channel.name.startswith("📊 Total Website Views:") or channel.name.startswith("📊 Total Views:"):
                     await channel.delete(reason="Stats channel removed by admin")
                     deleted = True
                     
@@ -388,7 +453,7 @@ class StatsChannel(commands.Cog):
                     # Try to fetch stats
                     stats = await self.fetch_website_stats()
                     status.append(f"✅ Stats Fetch: Success")
-                    status.append(f"   📊 Total Views: {stats.get('total_views', 'N/A')}")
+                    status.append(f"   📊 Total Website Views: {stats.get('total_views', 'N/A')}")
                 else:
                     status.append("❌ GA Client: Failed to create")
             except Exception as e:

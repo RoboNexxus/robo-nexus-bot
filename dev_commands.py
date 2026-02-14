@@ -370,6 +370,9 @@ class DevCommands(commands.Cog):
     async def status(self, interaction: discord.Interaction):
         """Show detailed bot status with auto-monitoring info"""
         
+        # Defer immediately to prevent timeout
+        await interaction.response.defer()
+        
         # Calculate uptime
         uptime = datetime.now() - self.start_time
         days = uptime.days
@@ -413,7 +416,7 @@ class DevCommands(commands.Cog):
         
         embed.set_footer(text=f"🔄 Fully automated • Started: {self.start_time.strftime('%b %d, %H:%M')}")
         
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
     
     @app_commands.command(name="restart", description="[DEV] Restart the bot")
     async def restart_bot(self, interaction: discord.Interaction):

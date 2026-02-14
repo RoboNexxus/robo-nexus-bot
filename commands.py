@@ -259,7 +259,7 @@ class BirthdayCommands(commands.Cog):
     
     @app_commands.command(name="upcoming_birthdays", description="See all upcoming birthdays in Robo Nexus")
     async def upcoming_birthdays(self, interaction: discord.Interaction):
-        """Show all upcoming birthdays"""
+        """Show all upcoming birthdays with pagination"""
         try:
             await interaction.response.defer()
             
@@ -332,13 +332,23 @@ class BirthdayCommands(commands.Cog):
                     description="No registered birthdays found for members of this server.",
                     color=discord.Color.orange()
                 )
-            else:
-                # Sort by days until birthday (soonest first)
-                birthday_data.sort(key=lambda x: x['days_until'])
+                await interaction.followup.send(embed=embed)
+                return
+            
+            # Sort by days until birthday (soonest first)
+            birthday_data.sort(key=lambda x: x['days_until'])
+            
+            # Pagination setup
+            page = 0
+            per_page = 10
+            total_pages = (len(birthday_data) + per_page - 1) // per_page
+            
+            def create_embed(page_num):
+                start_idx = page_num * per_page
+                end_idx = min(start_idx + per_page, len(birthday_data))
                 
-                # Create formatted list
                 birthday_list = []
-                for bd in birthday_data[:10]:  # Limit to 10 for display
+                for bd in birthday_data[start_idx:end_idx]:
                     days_text = ""
                     if bd['days_until'] == 0:
                         days_text = " 🎉 **TODAY!**"
@@ -354,13 +364,45 @@ class BirthdayCommands(commands.Cog):
                     description="\n".join(birthday_list),
                     color=discord.Color.purple()
                 )
-                
-                if len(birthday_data) > 10:
-                    embed.set_footer(text=f"Showing next 10 of {len(birthday_data)} registered birthdays")
-                else:
-                    embed.set_footer(text=f"{len(birthday_data)} registered birthdays")
+                embed.set_footer(text=f"Page {page_num + 1}/{total_pages} • {len(birthday_data)} total birthdays")
+                return embed
             
-            await interaction.followup.send(embed=embed)
+            # Create view with buttons if multiple pages
+            if total_pages > 1:
+                view = discord.ui.View(timeout=180)
+                
+                async def previous_callback(button_interaction):
+                    nonlocal page
+                    if button_interaction.user.id != interaction.user.id:
+                        await button_interaction.response.send_message("This isn't your command!", ephemeral=True)
+                        return
+                    page = max(0, page - 1)
+                    prev_button.disabled = (page == 0)
+                    next_button.disabled = (page == total_pages - 1)
+                    await button_interaction.response.edit_message(embed=create_embed(page), view=view)
+                
+                async def next_callback(button_interaction):
+                    nonlocal page
+                    if button_interaction.user.id != interaction.user.id:
+                        await button_interaction.response.send_message("This isn't your command!", ephemeral=True)
+                        return
+                    page = min(total_pages - 1, page + 1)
+                    prev_button.disabled = (page == 0)
+                    next_button.disabled = (page == total_pages - 1)
+                    await button_interaction.response.edit_message(embed=create_embed(page), view=view)
+                
+                prev_button = discord.ui.Button(label="◀ Previous", style=discord.ButtonStyle.primary, disabled=True)
+                next_button = discord.ui.Button(label="Next ▶", style=discord.ButtonStyle.primary)
+                
+                prev_button.callback = previous_callback
+                next_button.callback = next_callback
+                
+                view.add_item(prev_button)
+                view.add_item(next_button)
+                
+                await interaction.followup.send(embed=create_embed(page), view=view)
+            else:
+                await interaction.followup.send(embed=create_embed(page))
             
         except Exception as e:
             logger.error(f"Error in upcoming_birthdays command: {e}")
