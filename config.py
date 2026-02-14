@@ -26,6 +26,11 @@ class Config:
     GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')  # GitHub Personal Access Token
     GITHUB_OWNER = os.getenv('GITHUB_OWNER', 'RoboNexxus')  # GitHub organization or username
     
+    # Google Analytics Configuration
+    GA_PROPERTY_ID = os.getenv('GA_PROPERTY_ID')  # Google Analytics 4 Property ID
+    GOOGLE_APPLICATION_CREDENTIALS = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')  # Path to service account JSON (optional)
+    GOOGLE_CREDENTIALS_JSON = os.getenv('GOOGLE_CREDENTIALS_JSON')  # Direct JSON string from Replit Secrets (recommended)
+    
     @classmethod
     def validate(cls):
         """Validate that required configuration is present"""
