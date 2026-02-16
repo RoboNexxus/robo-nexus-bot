@@ -212,7 +212,7 @@ class StatsChannel(commands.Cog):
             stats = await self.fetch_website_stats()
             
             # Create channel name with total views
-            channel_name = f"📊 Total Website Views: {stats['total_views']}"
+            channel_name = f"🔒 Website Views: {stats['total_views']}"
             
             # Create voice channel
             channel = await guild.create_voice_channel(
@@ -250,9 +250,9 @@ class StatsChannel(commands.Cog):
                 github_org_channel = None
                 
                 for channel in category.voice_channels:
-                    if channel.name.startswith("📊 Total Website Views:") or channel.name.startswith("📊 Total Views:"):
+                    if channel.name.startswith("🔒 Website Views:") or channel.name.startswith("📊 Website Views:") or channel.name.startswith("📊 Total Website Views:") or channel.name.startswith("📊 Total Views:"):
                         website_channel = channel
-                    elif channel.name.startswith("🔷 RoboNexxus GitHub Views:"):
+                    elif channel.name.startswith("🔒 Github Views:") or channel.name.startswith("🔷 Github Views:") or channel.name.startswith("🔷 RoboNexxus GitHub Views:"):
                         github_org_channel = channel
                 
                 # Create website stats channel if doesn't exist
@@ -264,7 +264,7 @@ class StatsChannel(commands.Cog):
                 # Update website stats channel
                 if website_channel:
                     stats = await self.fetch_website_stats()
-                    new_name = f"📊 Total Website Views: {stats['total_views']}"
+                    new_name = f"🔒 Website Views: {stats['total_views']}"
                     
                     if website_channel.name != new_name:
                         await website_channel.edit(name=new_name)
@@ -274,25 +274,25 @@ class StatsChannel(commands.Cog):
                 if not github_org_channel:
                     github_org_views = await self.fetch_github_org_views()
                     github_org_channel = await guild.create_voice_channel(
-                        name=f"🔷 RoboNexxus GitHub Views: {github_org_views}",
+                        name=f"🔒 Github Views: {github_org_views}",
                         category=category,
-                        reason="RoboNexxus GitHub profile views display"
+                        reason="Github profile views display"
                     )
                     await github_org_channel.set_permissions(
                         guild.default_role,
                         connect=False,
                         view_channel=True
                     )
-                    logger.info(f"Created RoboNexxus GitHub stats channel in {guild.name}")
+                    logger.info(f"Created Github stats channel in {guild.name}")
                 
                 # Update GitHub org stats channel
                 if github_org_channel:
                     github_org_views = await self.fetch_github_org_views()
-                    new_github_org_name = f"🔷 RoboNexxus GitHub Views: {github_org_views}"
+                    new_github_org_name = f"🔒 Github Views: {github_org_views}"
                     
                     if github_org_channel.name != new_github_org_name:
                         await github_org_channel.edit(name=new_github_org_name)
-                        logger.info(f"Updated RoboNexxus GitHub stats channel in {guild.name}: {new_github_org_name}")
+                        logger.info(f"Updated Github stats channel in {guild.name}: {new_github_org_name}")
                         
         except Exception as e:
             logger.error(f"Error updating stats channels: {e}")
@@ -323,7 +323,7 @@ class StatsChannel(commands.Cog):
             # Check if stats channel already exists
             existing_channel = None
             for channel in category.voice_channels:
-                if channel.name.startswith("📊 Total Website Views:") or channel.name.startswith("📊 Total Views:"):
+                if channel.name.startswith("🔒 Website Views:") or channel.name.startswith("📊 Website Views:") or channel.name.startswith("📊 Total Website Views:") or channel.name.startswith("📊 Total Views:"):
                     existing_channel = channel
                     break
             
@@ -387,7 +387,7 @@ class StatsChannel(commands.Cog):
             # Find and delete stats channel
             deleted = False
             for channel in category.voice_channels:
-                if channel.name.startswith("📊 Total Website Views:") or channel.name.startswith("📊 Total Views:"):
+                if channel.name.startswith("🔒 Website Views:") or channel.name.startswith("📊 Website Views:") or channel.name.startswith("📊 Total Website Views:") or channel.name.startswith("📊 Total Views:"):
                     await channel.delete(reason="Stats channel removed by admin")
                     deleted = True
                     
@@ -453,7 +453,7 @@ class StatsChannel(commands.Cog):
                     # Try to fetch stats
                     stats = await self.fetch_website_stats()
                     status.append(f"✅ Stats Fetch: Success")
-                    status.append(f"   📊 Total Website Views: {stats.get('total_views', 'N/A')}")
+                    status.append(f"   🔒 Website Views: {stats.get('total_views', 'N/A')}")
                 else:
                     status.append("❌ GA Client: Failed to create")
             except Exception as e:

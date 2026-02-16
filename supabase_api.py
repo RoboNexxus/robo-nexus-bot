@@ -549,3 +549,301 @@ def get_supabase_api():
     if supabase_api is None:
         supabase_api = SupabaseAPI()
     return supabase_api
+
+    # Team Management methods
+    def create_team(self, team_data: Dict[str, Any]) -> bool:
+        """Create a new team"""
+        try:
+            response = requests.post(
+                f"{self.url}/rest/v1/teams",
+                headers=self.headers,
+                json=team_data,
+                timeout=10
+            )
+            
+            if response.status_code == 201:
+                logger.info(f"Team '{team_data.get('name')}' created successfully")
+                return True
+            else:
+                logger.error(f"Failed to create team: {response.status_code} - {response.text}")
+                return False
+        except requests.exceptions.Timeout:
+            logger.error("Timeout creating team")
+            return False
+        except Exception as e:
+            logger.error(f"Error creating team: {e}")
+            return False
+    
+    def add_team_category(self, guild_id: str, team_name: str, category: str) -> bool:
+        """Add a category to a team"""
+        try:
+            response = requests.post(
+                f"{self.url}/rest/v1/team_categories",
+                headers=self.headers,
+                json={
+                    'guild_id': guild_id,
+                    'team_name': team_name,
+                    'category': category
+                },
+                timeout=10
+            )
+            
+            return response.status_code == 201
+        except requests.exceptions.Timeout:
+            logger.error("Timeout adding team category")
+            return False
+        except Exception as e:
+            logger.error(f"Error adding team category: {e}")
+            return False
+    
+    def remove_team_category(self, guild_id: str, team_name: str, category: str) -> bool:
+        """Remove a category from a team"""
+        try:
+            response = requests.delete(
+                f"{self.url}/rest/v1/team_categories?guild_id=eq.{guild_id}&team_name=eq.{team_name}&category=eq.{category}",
+                headers=self.headers,
+                timeout=10
+            )
+            
+            return response.status_code == 204
+        except requests.exceptions.Timeout:
+            logger.error("Timeout removing team category")
+            return False
+        except Exception as e:
+            logger.error(f"Error removing team category: {e}")
+            return False
+    
+    def get_team_categories(self, guild_id: str, team_name: str) -> List[str]:
+        """Get all categories for a team"""
+        try:
+            response = requests.get(
+                f"{self.url}/rest/v1/team_categories?guild_id=eq.{guild_id}&team_name=eq.{team_name}",
+                headers=self.headers,
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return [item['category'] for item in data]
+        except requests.exceptions.Timeout:
+            logger.error(f"Timeout getting team categories for {team_name}")
+        except Exception as e:
+            logger.error(f"Error getting team categories for {team_name}: {e}")
+        
+        return []
+    
+    def get_team_by_name(self, guild_id: str, team_name: str) -> Optional[Dict[str, Any]]:
+        """Get team by name"""
+        try:
+            response = requests.get(
+                f"{self.url}/rest/v1/teams?guild_id=eq.{guild_id}&name=eq.{team_name}",
+                headers=self.headers,
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return data[0] if data else None
+        except requests.exceptions.Timeout:
+            logger.error(f"Timeout getting team {team_name}")
+        except Exception as e:
+            logger.error(f"Error getting team {team_name}: {e}")
+        
+        return None
+    
+    def get_team_by_leader(self, guild_id: str, leader_id: str) -> Optional[Dict[str, Any]]:
+        """Get team by leader ID"""
+        try:
+            response = requests.get(
+                f"{self.url}/rest/v1/teams?guild_id=eq.{guild_id}&leader_id=eq.{leader_id}",
+                headers=self.headers,
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return data[0] if data else None
+        except requests.exceptions.Timeout:
+            logger.error(f"Timeout getting team by leader {leader_id}")
+        except Exception as e:
+            logger.error(f"Error getting team by leader {leader_id}: {e}")
+        
+        return None
+    
+    def get_all_teams(self, guild_id: str) -> List[Dict[str, Any]]:
+        """Get all teams in a guild"""
+        try:
+            response = requests.get(
+                f"{self.url}/rest/v1/teams?guild_id=eq.{guild_id}&order=created_at.desc",
+                headers=self.headers,
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                return response.json()
+        except requests.exceptions.Timeout:
+            logger.error("Timeout getting all teams")
+        except Exception as e:
+            logger.error(f"Error getting all teams: {e}")
+        
+        return []
+    
+    def update_team(self, guild_id: str, team_name: str, updates: Dict[str, Any]) -> bool:
+        """Update team data"""
+        try:
+            response = requests.patch(
+                f"{self.url}/rest/v1/teams?guild_id=eq.{guild_id}&name=eq.{team_name}",
+                headers=self.headers,
+                json=updates,
+                timeout=10
+            )
+            
+            return response.status_code == 200
+        except requests.exceptions.Timeout:
+            logger.error(f"Timeout updating team {team_name}")
+            return False
+        except Exception as e:
+            logger.error(f"Error updating team {team_name}: {e}")
+            return False
+    
+    def delete_team(self, guild_id: str, team_name: str) -> bool:
+        """Delete a team"""
+        try:
+            # First delete all team members
+            requests.delete(
+                f"{self.url}/rest/v1/team_members?guild_id=eq.{guild_id}&team_name=eq.{team_name}",
+                headers=self.headers,
+                timeout=10
+            )
+            
+            # Then delete the team
+            response = requests.delete(
+                f"{self.url}/rest/v1/teams?guild_id=eq.{guild_id}&name=eq.{team_name}",
+                headers=self.headers,
+                timeout=10
+            )
+            
+            return response.status_code == 204
+        except requests.exceptions.Timeout:
+            logger.error(f"Timeout deleting team {team_name}")
+            return False
+        except Exception as e:
+            logger.error(f"Error deleting team {team_name}: {e}")
+            return False
+    
+    def add_team_member(self, member_data: Dict[str, Any]) -> bool:
+        """Add a member to a team"""
+        try:
+            response = requests.post(
+                f"{self.url}/rest/v1/team_members",
+                headers=self.headers,
+                json=member_data,
+                timeout=10
+            )
+            
+            return response.status_code == 201
+        except requests.exceptions.Timeout:
+            logger.error("Timeout adding team member")
+            return False
+        except Exception as e:
+            logger.error(f"Error adding team member: {e}")
+            return False
+    
+    def remove_team_member(self, guild_id: str, team_name: str, user_id: str) -> bool:
+        """Remove a member from a team"""
+        try:
+            response = requests.delete(
+                f"{self.url}/rest/v1/team_members?guild_id=eq.{guild_id}&team_name=eq.{team_name}&user_id=eq.{user_id}",
+                headers=self.headers,
+                timeout=10
+            )
+            
+            return response.status_code == 204
+        except requests.exceptions.Timeout:
+            logger.error("Timeout removing team member")
+            return False
+        except Exception as e:
+            logger.error(f"Error removing team member: {e}")
+            return False
+    
+    def get_team_members(self, guild_id: str, team_name: str) -> List[Dict[str, Any]]:
+        """Get all members of a team"""
+        try:
+            response = requests.get(
+                f"{self.url}/rest/v1/team_members?guild_id=eq.{guild_id}&team_name=eq.{team_name}&order=joined_at.asc",
+                headers=self.headers,
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                return response.json()
+        except requests.exceptions.Timeout:
+            logger.error(f"Timeout getting team members for {team_name}")
+        except Exception as e:
+            logger.error(f"Error getting team members for {team_name}: {e}")
+        
+        return []
+    
+    def get_user_team(self, guild_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+        """Get the team a user is in"""
+        try:
+            response = requests.get(
+                f"{self.url}/rest/v1/team_members?guild_id=eq.{guild_id}&user_id=eq.{user_id}",
+                headers=self.headers,
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data:
+                    # Get the full team data
+                    team_name = data[0]['team_name']
+                    return self.get_team_by_name(guild_id, team_name)
+        except requests.exceptions.Timeout:
+            logger.error(f"Timeout getting user team for {user_id}")
+        except Exception as e:
+            logger.error(f"Error getting user team for {user_id}: {e}")
+        
+        return None
+    
+    # Competition Management methods
+    def create_competition(self, comp_data: Dict[str, Any]) -> bool:
+        """Create a new competition announcement"""
+        try:
+            response = requests.post(
+                f"{self.url}/rest/v1/competitions",
+                headers=self.headers,
+                json=comp_data,
+                timeout=10
+            )
+            
+            if response.status_code == 201:
+                logger.info(f"Competition '{comp_data.get('name')}' created successfully")
+                return True
+            else:
+                logger.error(f"Failed to create competition: {response.status_code} - {response.text}")
+                return False
+        except requests.exceptions.Timeout:
+            logger.error("Timeout creating competition")
+            return False
+        except Exception as e:
+            logger.error(f"Error creating competition: {e}")
+            return False
+    
+    def get_all_competitions(self, guild_id: str) -> List[Dict[str, Any]]:
+        """Get all competitions"""
+        try:
+            response = requests.get(
+                f"{self.url}/rest/v1/competitions?guild_id=eq.{guild_id}&order=created_at.desc",
+                headers=self.headers,
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                return response.json()
+        except requests.exceptions.Timeout:
+            logger.error("Timeout getting competitions")
+        except Exception as e:
+            logger.error(f"Error getting competitions: {e}")
+        
+        return []

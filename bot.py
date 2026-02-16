@@ -57,6 +57,7 @@ class RoboNexusBirthdayBot(commands.Bot):
             await self.load_extension('auction')
             await self.load_extension('welcome_system')
             await self.load_extension('stats_channel')
+            await self.load_extension('team_system')
             logger.info("Command cogs loaded successfully")
             
             # Clear and sync slash commands to prevent duplicates
