@@ -34,6 +34,7 @@ env/
 
 # Secrets and Tokens - NEVER COMMIT THESE!
 secrets.json
+secrets_template.json
 secrets.yaml
 *secret*
 *token*
