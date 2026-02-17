@@ -1104,6 +1104,196 @@ class TeamSystem(commands.Cog):
                 f"❌ Error: {str(e)}",
                 ephemeral=True
             )
+    @app_commands.command(name="set_team_channel", description="[ADMIN] Set the channel for team announcements")
+    @app_commands.describe(channel="The channel where team announcements will be sent")
+    @app_commands.default_permissions(administrator=True)
+    async def set_team_channel(self, interaction: discord.Interaction, channel: discord.TextChannel):
+        """Set the team announcement channel (Admin only)"""
+        try:
+            guild_id = str(interaction.guild_id)
+
+            # Save to database
+            if self.supabase.db.set_setting(f'team_channel_{guild_id}', str(channel.id)):
+                embed = discord.Embed(
+                    title="✅ Team Channel Set",
+                    description=f"Team announcements will now be sent to {channel.mention}",
+                    color=discord.Color.green()
+                )
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                logger.info(f"Team channel set to {channel.name} by {interaction.user}")
+            else:
+                await interaction.response.send_message(
+                    "❌ Failed to set team channel. Please try again.",
+                    ephemeral=True
+                )
+        except Exception as e:
+            logger.error(f"Error setting team channel: {e}")
+            await interaction.response.send_message(
+                f"❌ Error: {str(e)}",
+                ephemeral=True
+            )
+
+    @app_commands.command(name="announce_team_creation", description="[ADMIN] Announce team creation for an event")
+    @app_commands.describe(
+        event_name="Name of the event/competition",
+        categories="Competition categories (comma-separated, optional)",
+        deadline="Deadline for team creation (optional)",
+        max_members="Maximum team size (optional)",
+        team_type="Permanent or Temporary teams (optional)",
+        additional_info="Any additional information (optional)"
+    )
+    @app_commands.choices(team_type=[
+        app_commands.Choice(name="♾️ Permanent Teams", value="permanent"),
+        app_commands.Choice(name="⏱️ Temporary Teams", value="temporary"),
+        app_commands.Choice(name="Both Types Allowed", value="both"),
+    ])
+    @app_commands.default_permissions(administrator=True)
+    async def announce_team_creation(
+        self,
+        interaction: discord.Interaction,
+        event_name: str,
+        categories: Optional[str] = None,
+        deadline: Optional[str] = None,
+        max_members: Optional[int] = None,
+        team_type: Optional[app_commands.Choice[str]] = None,
+        additional_info: Optional[str] = None
+    ):
+        """Announce team creation for an event (Admin only)"""
+        try:
+            guild_id = str(interaction.guild_id)
+
+            # Get team channel
+            team_channel_id = self.supabase.db.get_setting(f'team_channel_{guild_id}')
+
+            if not team_channel_id:
+                await interaction.response.send_message(
+                    "❌ Team channel not configured! Use `/set_team_channel` first.",
+                    ephemeral=True
+                )
+                return
+
+            team_channel = interaction.guild.get_channel(int(team_channel_id))
+
+            if not team_channel:
+                await interaction.response.send_message(
+                    "❌ Team channel not found! Please reconfigure using `/set_team_channel`.",
+                    ephemeral=True
+                )
+                return
+
+            # Create announcement embed
+            embed = discord.Embed(
+                title=f"🤖 Team Creation Announcement",
+                description=f"**{event_name}**\n\nIt's time to form your teams for the upcoming event!",
+                color=discord.Color.blue(),
+                timestamp=datetime.now()
+            )
+
+            # Add categories if provided
+            if categories:
+                category_list = [cat.strip() for cat in categories.split(',')]
+                category_emojis = {
+                    "Robo War": "⚔️",
+                    "Robo Soccer": "⚽",
+                    "Drone": "🚁",
+                    "Innovation": "💡",
+                    "Line Follower": "🛤️",
+                    "Robo Race": "🏁"
+                }
+
+                formatted_cats = []
+                for cat in category_list:
+                    emoji = category_emojis.get(cat, "🔧")
+                    formatted_cats.append(f"{emoji} {cat}")
+
+                embed.add_field(
+                    name="🏆 Competition Categories",
+                    value="\n".join(formatted_cats),
+                    inline=False
+                )
+
+            # Add team type info
+            if team_type:
+                type_info = {
+                    "permanent": "♾️ **Permanent Teams Only**\nCreate teams that can compete in multiple categories",
+                    "temporary": "⏱️ **Temporary Teams Only**\nCreate teams for this specific competition",
+                    "both": "♾️⏱️ **Both Types Allowed**\nChoose permanent or temporary based on your needs"
+                }
+                embed.add_field(
+                    name="📋 Team Type",
+                    value=type_info.get(team_type.value, "Any type allowed"),
+                    inline=False
+                )
+
+            # Add max members if provided
+            if max_members:
+                embed.add_field(
+                    name="👥 Maximum Team Size",
+                    value=f"{max_members} members per team",
+                    inline=True
+                )
+
+            # Add deadline if provided
+            if deadline:
+                embed.add_field(
+                    name="⏰ Deadline",
+                    value=deadline,
+                    inline=True
+                )
+
+            # Add additional info if provided
+            if additional_info:
+                embed.add_field(
+                    name="📝 Additional Information",
+                    value=additional_info,
+                    inline=False
+                )
+
+            # Add instructions
+            instructions = (
+                "**How to Create Your Team:**\n"
+                "• Use `/create_permanent_team` for permanent teams\n"
+                "• Use `/create_temp_team` for temporary teams\n"
+                "• Use `/list_teams` to see all existing teams\n"
+                "• Use `/recruit_members` to find teammates\n"
+                "• Use `/my_team` to view your team info"
+            )
+            embed.add_field(
+                name="💡 Commands",
+                value=instructions,
+                inline=False
+            )
+
+            embed.set_footer(text=f"Announced by {interaction.user.display_name}")
+
+            # Send announcement
+            await interaction.response.defer(ephemeral=True)
+
+            announcement_msg = await team_channel.send(
+                content="@everyone **🚨 TEAM CREATION ANNOUNCEMENT 🚨**",
+                embed=embed
+            )
+
+            await interaction.followup.send(
+                f"✅ Team creation announcement posted in {team_channel.mention}!",
+                ephemeral=True
+            )
+
+            logger.info(f"Team creation announced for '{event_name}' by {interaction.user}")
+
+        except Exception as e:
+            logger.error(f"Error announcing team creation: {e}")
+            try:
+                await interaction.followup.send(
+                    f"❌ Error: {str(e)}",
+                    ephemeral=True
+                )
+            except:
+                await interaction.response.send_message(
+                    f"❌ Error: {str(e)}",
+                    ephemeral=True
+                )
+
 
 
 
