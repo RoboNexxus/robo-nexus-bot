@@ -40,7 +40,7 @@ class WelcomeSystem(commands.Cog):
         
         logger.info("Welcome system initialized with PostgreSQL")
     
-    def get_welcome_channel_id(self) -> Optional[int]:
+    async def get_welcome_channel_id(self) -> Optional[int]:
         """Get welcome channel ID from PostgreSQL"""
         try:
             channel_id = await self.db.get_setting('welcome_channel_id')
@@ -67,7 +67,7 @@ class WelcomeSystem(commands.Cog):
             self.db = get_async_supabase()
             self.db.set_setting('welcome_channel_id', str(channel_id))
     
-    def get_self_roles_channel_id(self) -> Optional[int]:
+    async def get_self_roles_channel_id(self) -> Optional[int]:
         """Get self-roles channel ID from PostgreSQL"""
         try:
             channel_id = await self.db.get_setting('self_roles_channel_id')
@@ -94,7 +94,7 @@ class WelcomeSystem(commands.Cog):
             self.db = get_async_supabase()
             self.db.set_setting('self_roles_channel_id', str(channel_id))
     
-    def get_user_profile(self, user_id: int) -> Optional[Dict]:
+    async def get_user_profile(self, user_id: int) -> Optional[Dict]:
         """Get user profile from PostgreSQL"""
         profile = await self.db.get_user_profile(str(user_id))
         if profile and profile.get('social_links'):
@@ -103,7 +103,7 @@ class WelcomeSystem(commands.Cog):
                 profile['social_links'] = json.loads(profile['social_links'])
         return profile
     
-    def save_user_profile(self, user_id: int, profile_data: Dict) -> bool:
+    async def save_user_profile(self, user_id: int, profile_data: Dict) -> bool:
         """Save user profile to PostgreSQL"""
         # Convert social_links dict to JSON string for storage
         if 'social_links' in profile_data and isinstance(profile_data['social_links'], dict):
@@ -112,7 +112,7 @@ class WelcomeSystem(commands.Cog):
         profile_data['user_id'] = str(user_id)
         return await self.db.create_user_profile(profile_data)
     
-    def update_user_profile(self, user_id: int, updates: Dict) -> bool:
+    async def update_user_profile(self, user_id: int, updates: Dict) -> bool:
         """Update user profile in PostgreSQL"""
         # Convert social_links dict to JSON string for storage
         if 'social_links' in updates and isinstance(updates['social_links'], dict):
