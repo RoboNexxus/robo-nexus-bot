@@ -896,6 +896,215 @@ class TeamSystem(commands.Cog):
                     f"❌ Error: {str(e)}",
                     ephemeral=True
                 )
+    @app_commands.command(name="add_member", description="[LEADER] Manually add a member to your team (for non-Discord members)")
+    @app_commands.describe(
+        member_name="Name of the person to add (e.g., 'John Doe')",
+        user="Discord user (optional, if they have Discord)"
+    )
+    async def add_member(
+        self,
+        interaction: discord.Interaction,
+        member_name: str,
+        user: Optional[discord.Member] = None
+    ):
+        """Manually add a member to team (leader only)"""
+        try:
+            guild_id = str(interaction.guild_id)
+
+            # Get leader's team
+            leader_team = self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
+
+            if not leader_team:
+                await interaction.response.send_message(
+                    "❌ You don't lead any team!",
+                    ephemeral=True
+                )
+                return
+
+            # Check if team is full
+            members = self.supabase.get_team_members(guild_id, leader_team['name'])
+            if len(members) >= leader_team['max_members']:
+                await interaction.response.send_message(
+                    f"❌ Your team is full ({leader_team['max_members']} members)!\n"
+                    f"Use `/edit_team` to increase max_members first.",
+                    ephemeral=True
+                )
+                return
+
+            # If Discord user provided, use their ID and name
+            if user:
+                user_id = str(user.id)
+                display_name = user.display_name
+
+                # Check if user is already in a team
+                existing_team = self.supabase.get_user_team(guild_id, user_id)
+                if existing_team:
+                    await interaction.response.send_message(
+                        f"❌ {user.mention} is already in team **{existing_team['name']}**!",
+                        ephemeral=True
+                    )
+                    return
+            else:
+                # Non-Discord member - use name as ID (prefixed with "external_")
+                user_id = f"external_{member_name.lower().replace(' ', '_')}"
+                display_name = member_name
+
+                # Check if this name is already in the team
+                for member in members:
+                    if member['user_name'].lower() == member_name.lower():
+                        await interaction.response.send_message(
+                            f"❌ **{member_name}** is already in your team!",
+                            ephemeral=True
+                        )
+                        return
+
+            # Add member
+            member_data = {
+                'guild_id': guild_id,
+                'team_name': leader_team['name'],
+                'user_id': user_id,
+                'user_name': display_name
+            }
+
+            if self.supabase.add_team_member(member_data):
+                if user:
+                    await interaction.response.send_message(
+                        f"✅ Added {user.mention} to **{leader_team['name']}**!",
+                        ephemeral=True
+                    )
+
+                    # Notify the user
+                    try:
+                        await user.send(
+                            f"🎉 You've been added to team **{leader_team['name']}** by {interaction.user.display_name}!\n"
+                            f"Use `/my_team` to view your team information."
+                        )
+                    except:
+                        pass
+                else:
+                    await interaction.response.send_message(
+                        f"✅ Added **{member_name}** (non-Discord member) to **{leader_team['name']}**!",
+                        ephemeral=True
+                    )
+
+                logger.info(f"{display_name} added to team '{leader_team['name']}' by {interaction.user}")
+            else:
+                await interaction.response.send_message(
+                    "❌ Failed to add member. Please try again.",
+                    ephemeral=True
+                )
+
+        except Exception as e:
+            logger.error(f"Error adding member: {e}")
+            await interaction.response.send_message(
+                f"❌ Error: {str(e)}",
+                ephemeral=True
+            )
+
+    @app_commands.command(name="remove_member", description="[LEADER] Remove a member from your team")
+    @app_commands.describe(
+        member_name="Name of the person to remove",
+        user="Discord user (optional, if they have Discord)"
+    )
+    async def remove_member(
+        self,
+        interaction: discord.Interaction,
+        member_name: Optional[str] = None,
+        user: Optional[discord.Member] = None
+    ):
+        """Remove a member from team (leader only)"""
+        try:
+            guild_id = str(interaction.guild_id)
+
+            # Get leader's team
+            leader_team = self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
+
+            if not leader_team:
+                await interaction.response.send_message(
+                    "❌ You don't lead any team!",
+                    ephemeral=True
+                )
+                return
+
+            # Need either member_name or user
+            if not member_name and not user:
+                await interaction.response.send_message(
+                    "❌ Please provide either a member name or Discord user!",
+                    ephemeral=True
+                )
+                return
+
+            # Get team members
+            members = self.supabase.get_team_members(guild_id, leader_team['name'])
+
+            # Find the member to remove
+            member_to_remove = None
+
+            if user:
+                # Remove by Discord user
+                for member in members:
+                    if member['user_id'] == str(user.id):
+                        member_to_remove = member
+                        break
+
+                if not member_to_remove:
+                    await interaction.response.send_message(
+                        f"❌ {user.mention} is not in your team!",
+                        ephemeral=True
+                    )
+                    return
+
+                # Can't remove yourself
+                if user.id == interaction.user.id:
+                    await interaction.response.send_message(
+                        "❌ You can't remove yourself! Use `/disband_team` to disband the team.",
+                        ephemeral=True
+                    )
+                    return
+            else:
+                # Remove by name (for non-Discord members)
+                for member in members:
+                    if member['user_name'].lower() == member_name.lower():
+                        member_to_remove = member
+                        break
+
+                if not member_to_remove:
+                    await interaction.response.send_message(
+                        f"❌ **{member_name}** is not in your team!",
+                        ephemeral=True
+                    )
+                    return
+
+            # Remove member
+            if self.supabase.remove_team_member(guild_id, leader_team['name'], member_to_remove['user_id']):
+                await interaction.response.send_message(
+                    f"✅ Removed **{member_to_remove['user_name']}** from **{leader_team['name']}**!",
+                    ephemeral=True
+                )
+
+                # Notify if Discord user
+                if user:
+                    try:
+                        await user.send(
+                            f"📢 You have been removed from team **{leader_team['name']}** by the team leader."
+                        )
+                    except:
+                        pass
+
+                logger.info(f"{member_to_remove['user_name']} removed from team '{leader_team['name']}' by {interaction.user}")
+            else:
+                await interaction.response.send_message(
+                    "❌ Failed to remove member. Please try again.",
+                    ephemeral=True
+                )
+
+        except Exception as e:
+            logger.error(f"Error removing member: {e}")
+            await interaction.response.send_message(
+                f"❌ Error: {str(e)}",
+                ephemeral=True
+            )
+
 
 
 class JoinTeamView(discord.ui.View):
@@ -987,211 +1196,3 @@ async def setup(bot):
     await bot.add_cog(TeamSystem(bot))
     logger.info("Team System cog loaded")
 
-    @app_commands.command(name="add_member", description="[LEADER] Manually add a member to your team (for non-Discord members)")
-    @app_commands.describe(
-        member_name="Name of the person to add (e.g., 'John Doe')",
-        user="Discord user (optional, if they have Discord)"
-    )
-    async def add_member(
-        self, 
-        interaction: discord.Interaction, 
-        member_name: str,
-        user: Optional[discord.Member] = None
-    ):
-        """Manually add a member to team (leader only)"""
-        try:
-            guild_id = str(interaction.guild_id)
-            
-            # Get leader's team
-            leader_team = self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
-            
-            if not leader_team:
-                await interaction.response.send_message(
-                    "❌ You don't lead any team!",
-                    ephemeral=True
-                )
-                return
-            
-            # Check if team is full
-            members = self.supabase.get_team_members(guild_id, leader_team['name'])
-            if len(members) >= leader_team['max_members']:
-                await interaction.response.send_message(
-                    f"❌ Your team is full ({leader_team['max_members']} members)!\n"
-                    f"Use `/edit_team` to increase max_members first.",
-                    ephemeral=True
-                )
-                return
-            
-            # If Discord user provided, use their ID and name
-            if user:
-                user_id = str(user.id)
-                display_name = user.display_name
-                
-                # Check if user is already in a team
-                existing_team = self.supabase.get_user_team(guild_id, user_id)
-                if existing_team:
-                    await interaction.response.send_message(
-                        f"❌ {user.mention} is already in team **{existing_team['name']}**!",
-                        ephemeral=True
-                    )
-                    return
-            else:
-                # Non-Discord member - use name as ID (prefixed with "external_")
-                user_id = f"external_{member_name.lower().replace(' ', '_')}"
-                display_name = member_name
-                
-                # Check if this name is already in the team
-                for member in members:
-                    if member['user_name'].lower() == member_name.lower():
-                        await interaction.response.send_message(
-                            f"❌ **{member_name}** is already in your team!",
-                            ephemeral=True
-                        )
-                        return
-            
-            # Add member
-            member_data = {
-                'guild_id': guild_id,
-                'team_name': leader_team['name'],
-                'user_id': user_id,
-                'user_name': display_name
-            }
-            
-            if self.supabase.add_team_member(member_data):
-                if user:
-                    await interaction.response.send_message(
-                        f"✅ Added {user.mention} to **{leader_team['name']}**!",
-                        ephemeral=True
-                    )
-                    
-                    # Notify the user
-                    try:
-                        await user.send(
-                            f"🎉 You've been added to team **{leader_team['name']}** by {interaction.user.display_name}!\n"
-                            f"Use `/my_team` to view your team information."
-                        )
-                    except:
-                        pass
-                else:
-                    await interaction.response.send_message(
-                        f"✅ Added **{member_name}** (non-Discord member) to **{leader_team['name']}**!",
-                        ephemeral=True
-                    )
-                
-                logger.info(f"{display_name} added to team '{leader_team['name']}' by {interaction.user}")
-            else:
-                await interaction.response.send_message(
-                    "❌ Failed to add member. Please try again.",
-                    ephemeral=True
-                )
-            
-        except Exception as e:
-            logger.error(f"Error adding member: {e}")
-            await interaction.response.send_message(
-                f"❌ Error: {str(e)}",
-                ephemeral=True
-            )
-    
-    @app_commands.command(name="remove_member", description="[LEADER] Remove a member from your team")
-    @app_commands.describe(
-        member_name="Name of the person to remove",
-        user="Discord user (optional, if they have Discord)"
-    )
-    async def remove_member(
-        self, 
-        interaction: discord.Interaction, 
-        member_name: Optional[str] = None,
-        user: Optional[discord.Member] = None
-    ):
-        """Remove a member from team (leader only)"""
-        try:
-            guild_id = str(interaction.guild_id)
-            
-            # Get leader's team
-            leader_team = self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
-            
-            if not leader_team:
-                await interaction.response.send_message(
-                    "❌ You don't lead any team!",
-                    ephemeral=True
-                )
-                return
-            
-            # Need either member_name or user
-            if not member_name and not user:
-                await interaction.response.send_message(
-                    "❌ Please provide either a member name or Discord user!",
-                    ephemeral=True
-                )
-                return
-            
-            # Get team members
-            members = self.supabase.get_team_members(guild_id, leader_team['name'])
-            
-            # Find the member to remove
-            member_to_remove = None
-            
-            if user:
-                # Remove by Discord user
-                for member in members:
-                    if member['user_id'] == str(user.id):
-                        member_to_remove = member
-                        break
-                
-                if not member_to_remove:
-                    await interaction.response.send_message(
-                        f"❌ {user.mention} is not in your team!",
-                        ephemeral=True
-                    )
-                    return
-                
-                # Can't remove yourself
-                if user.id == interaction.user.id:
-                    await interaction.response.send_message(
-                        "❌ You can't remove yourself! Use `/disband_team` to disband the team.",
-                        ephemeral=True
-                    )
-                    return
-            else:
-                # Remove by name (for non-Discord members)
-                for member in members:
-                    if member['user_name'].lower() == member_name.lower():
-                        member_to_remove = member
-                        break
-                
-                if not member_to_remove:
-                    await interaction.response.send_message(
-                        f"❌ **{member_name}** is not in your team!",
-                        ephemeral=True
-                    )
-                    return
-            
-            # Remove member
-            if self.supabase.remove_team_member(guild_id, leader_team['name'], member_to_remove['user_id']):
-                await interaction.response.send_message(
-                    f"✅ Removed **{member_to_remove['user_name']}** from **{leader_team['name']}**!",
-                    ephemeral=True
-                )
-                
-                # Notify if Discord user
-                if user:
-                    try:
-                        await user.send(
-                            f"📢 You have been removed from team **{leader_team['name']}** by the team leader."
-                        )
-                    except:
-                        pass
-                
-                logger.info(f"{member_to_remove['user_name']} removed from team '{leader_team['name']}' by {interaction.user}")
-            else:
-                await interaction.response.send_message(
-                    "❌ Failed to remove member. Please try again.",
-                    ephemeral=True
-                )
-            
-        except Exception as e:
-            logger.error(f"Error removing member: {e}")
-            await interaction.response.send_message(
-                f"❌ Error: {str(e)}",
-                ephemeral=True
-            )
