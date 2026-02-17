@@ -34,8 +34,8 @@ class TeamSystem(commands.Cog):
     async def get_team_embed(self, team_name: str, team_data: dict, guild: discord.Guild) -> discord.Embed:
         """Create an embed for team display"""
         # Get team members and categories
-        members = await await self.supabase.get_team_members(str(guild.id), team_name)
-        categories = await await self.supabase.get_team_categories(str(guild.id), team_name)
+        members = await self.supabase.get_team_members(str(guild.id), team_name)
+        categories = await self.supabase.get_team_categories(str(guild.id), team_name)
         
         is_permanent = team_data.get('is_permanent', False)
         
