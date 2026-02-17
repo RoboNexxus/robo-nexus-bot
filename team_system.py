@@ -1113,7 +1113,7 @@ class TeamSystem(commands.Cog):
             guild_id = str(interaction.guild_id)
 
             # Save to database
-            if self.supabase.db.set_setting(f'team_channel_{guild_id}', str(channel.id)):
+            if self.supabase.set_setting(f'team_channel_{guild_id}', str(channel.id)):
                 embed = discord.Embed(
                     title="✅ Team Channel Set",
                     description=f"Team announcements will now be sent to {channel.mention}",
@@ -1163,7 +1163,7 @@ class TeamSystem(commands.Cog):
             guild_id = str(interaction.guild_id)
 
             # Get team channel
-            team_channel_id = self.supabase.db.get_setting(f'team_channel_{guild_id}')
+            team_channel_id = self.supabase.get_setting(f'team_channel_{guild_id}')
 
             if not team_channel_id:
                 await interaction.response.send_message(
