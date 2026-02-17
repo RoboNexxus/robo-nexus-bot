@@ -15,7 +15,7 @@ class BirthdayDatabase:
     def __init__(self):
         self.db = get_async_supabase()
     
-    def add_birthday(self, user_id: int, birthday: str) -> bool:
+    async def add_birthday(self, user_id: int, birthday: str) -> bool:
         """Add a birthday to the database"""
         try:
             logger.info(f"🎂 [database.py] Adding birthday for user_id: {user_id}, birthday: {birthday}")
@@ -29,7 +29,7 @@ class BirthdayDatabase:
             logger.error(f"💥 [database.py] Error adding birthday: {e}")
             return False
     
-    def get_birthday(self, user_id: int) -> Optional[str]:
+    async def get_birthday(self, user_id: int) -> Optional[str]:
         """Get a user's birthday"""
         try:
             return await self.db.get_birthday(str(user_id))
@@ -37,7 +37,7 @@ class BirthdayDatabase:
             logger.error(f"Error getting birthday: {e}")
             return None
     
-    def get_all_birthdays(self) -> List[Dict[str, Any]]:
+    async def get_all_birthdays(self) -> List[Dict[str, Any]]:
         """Get all birthdays"""
         try:
             birthdays = await self.db.get_all_birthdays()
@@ -53,7 +53,7 @@ class BirthdayDatabase:
             logger.error(f"Error getting all birthdays: {e}")
             return []
     
-    def remove_birthday(self, user_id: int) -> bool:
+    async def remove_birthday(self, user_id: int) -> bool:
         """Remove a birthday from the database"""
         try:
             return await self.db.remove_birthday(str(user_id))
@@ -61,7 +61,7 @@ class BirthdayDatabase:
             logger.error(f"Error removing birthday: {e}")
             return False
     
-    def get_birthdays_today(self, today_str: str) -> List[Dict[str, Any]]:
+    async def get_birthdays_today(self, today_str: str) -> List[Dict[str, Any]]:
         """Get birthdays for today"""
         try:
             return await self.db.get_birthdays_today(today_str)
@@ -69,11 +69,11 @@ class BirthdayDatabase:
             logger.error(f"Error getting today's birthdays: {e}")
             return []
     
-    def birthday_exists(self, user_id: int) -> bool:
+    async def birthday_exists(self, user_id: int) -> bool:
         """Check if a birthday exists for a user"""
         return self.get_birthday(user_id) is not None
     
-    def get_birthday_count(self) -> int:
+    async def get_birthday_count(self) -> int:
         """Get total number of birthdays"""
         try:
             birthdays = self.get_all_birthdays()
@@ -82,7 +82,7 @@ class BirthdayDatabase:
             logger.error(f"Error getting birthday count: {e}")
             return 0
     
-    def get_birthday_channel(self, guild_id: int) -> Optional[int]:
+    async def get_birthday_channel(self, guild_id: int) -> Optional[int]:
         """Get the configured birthday channel for a server"""
         try:
             channel_id = await self.db.get_setting(f'birthday_channel_{guild_id}')
@@ -91,7 +91,7 @@ class BirthdayDatabase:
             logger.error(f"Error getting birthday channel: {e}")
             return None
     
-    def set_birthday_channel(self, guild_id: int, channel_id: int) -> bool:
+    async def set_birthday_channel(self, guild_id: int, channel_id: int) -> bool:
         """Set the birthday announcement channel for a server"""
         try:
             return await self.db.set_setting(f'birthday_channel_{guild_id}', str(channel_id))
