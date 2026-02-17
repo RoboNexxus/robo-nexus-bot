@@ -541,15 +541,6 @@ class SupabaseAPI:
         
         return 0
 
-# Global instance
-supabase_api = None
-
-def get_supabase_api():
-    global supabase_api
-    if supabase_api is None:
-        supabase_api = SupabaseAPI()
-    return supabase_api
-
     # Team Management methods
     def create_team(self, team_data: Dict[str, Any]) -> bool:
         """Create a new team"""
@@ -847,3 +838,12 @@ def get_supabase_api():
             logger.error(f"Error getting competitions: {e}")
         
         return []
+
+# Global instance
+supabase_api = None
+
+def get_supabase_api():
+    global supabase_api
+    if supabase_api is None:
+        supabase_api = SupabaseAPI()
+    return supabase_api
