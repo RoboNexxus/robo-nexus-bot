@@ -59,8 +59,7 @@ logs/
 *~
 .DS_Store
 
-# Replit
-.replit
+# Replit (keep these for deployment)
 .upm/
 .cache/
 .config/
