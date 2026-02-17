@@ -7,7 +7,14 @@ hidden = [".pythonlibs", "__pycache__", ".git"]
 [nix]
 channel = "stable-23_11"
 
+[deployment]
+run = ["sh", "-c", "python main.py"]
+deploymentTarget = "cloudrun"
+ignorePorts = false
 
+[[ports]]
+localPort = 8080
+externalPort = 80
 
 [env]
 PYTHONUNBUFFERED = "1"
