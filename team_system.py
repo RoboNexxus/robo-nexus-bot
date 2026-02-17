@@ -8,7 +8,7 @@ from discord.ext import commands
 import logging
 from datetime import datetime
 from typing import Optional, List
-from supabase_api import get_supabase_api
+from async_supabase_wrapper import get_async_supabase
 
 logger = logging.getLogger(__name__)
 
@@ -27,15 +27,15 @@ class TeamSystem(commands.Cog):
     
     def __init__(self, bot):
         self.bot = bot
-        self.supabase = get_supabase_api()
+        self.supabase = get_async_supabase()
         
-        logger.info("Team System initialized with Supabase")
+        logger.info("Team System initialized with Async Supabase")
     
     async def get_team_embed(self, team_name: str, team_data: dict, guild: discord.Guild) -> discord.Embed:
         """Create an embed for team display"""
         # Get team members and categories
-        members = self.supabase.get_team_members(str(guild.id), team_name)
-        categories = self.supabase.get_team_categories(str(guild.id), team_name)
+        members = await await self.supabase.get_team_members(str(guild.id), team_name)
+        categories = await await self.supabase.get_team_categories(str(guild.id), team_name)
         
         is_permanent = team_data.get('is_permanent', False)
         
@@ -141,7 +141,7 @@ class TeamSystem(commands.Cog):
             guild_id = str(interaction.guild_id)
             
             # Check if team name already exists
-            existing_team = self.supabase.get_team_by_name(guild_id, name)
+            existing_team = await self.supabase.get_team_by_name(guild_id, name)
             if existing_team:
                 await interaction.response.send_message(
                     f"❌ A team named **{name}** already exists!",
@@ -150,7 +150,7 @@ class TeamSystem(commands.Cog):
                 return
             
             # Check if user already leads a team
-            leader_team = self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
+            leader_team = await self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
             if leader_team:
                 await interaction.response.send_message(
                     f"❌ You already lead **{leader_team['name']}**! You can only lead one team at a time.",
@@ -159,7 +159,7 @@ class TeamSystem(commands.Cog):
                 return
             
             # Check if user is already in a team
-            user_team = self.supabase.get_user_team(guild_id, str(interaction.user.id))
+            user_team = await self.supabase.get_user_team(guild_id, str(interaction.user.id))
             if user_team:
                 await interaction.response.send_message(
                     f"❌ You are already in **{user_team['name']}**! Leave your current team first.",
@@ -201,7 +201,7 @@ class TeamSystem(commands.Cog):
                 'recruiting': True
             }
             
-            if not self.supabase.create_team(team_data):
+            if not await self.supabase.create_team(team_data):
                 await interaction.response.send_message(
                     "❌ Failed to create team. Please try again.",
                     ephemeral=True
@@ -215,7 +215,7 @@ class TeamSystem(commands.Cog):
                 'user_id': str(interaction.user.id),
                 'user_name': interaction.user.display_name
             }
-            self.supabase.add_team_member(leader_data)
+            await self.supabase.add_team_member(leader_data)
             
             # Add initial members
             added_members = []
@@ -228,7 +228,7 @@ class TeamSystem(commands.Cog):
                         'user_id': member_id,
                         'user_name': member_name
                     }
-                    if self.supabase.add_team_member(member_data):
+                    if await self.supabase.add_team_member(member_data):
                         added_members.append(member_name)
             
             response_msg = (
@@ -289,7 +289,7 @@ class TeamSystem(commands.Cog):
             guild_id = str(interaction.guild_id)
             
             # Check if team name already exists
-            existing_team = self.supabase.get_team_by_name(guild_id, name)
+            existing_team = await self.supabase.get_team_by_name(guild_id, name)
             if existing_team:
                 await interaction.response.send_message(
                     f"❌ A team named **{name}** already exists!",
@@ -298,7 +298,7 @@ class TeamSystem(commands.Cog):
                 return
             
             # Check if user already leads a team
-            leader_team = self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
+            leader_team = await self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
             if leader_team:
                 await interaction.response.send_message(
                     f"❌ You already lead **{leader_team['name']}**! You can only lead one team at a time.",
@@ -307,7 +307,7 @@ class TeamSystem(commands.Cog):
                 return
             
             # Check if user is already in a team
-            user_team = self.supabase.get_user_team(guild_id, str(interaction.user.id))
+            user_team = await self.supabase.get_user_team(guild_id, str(interaction.user.id))
             if user_team:
                 await interaction.response.send_message(
                     f"❌ You are already in **{user_team['name']}**! Leave your current team first.",
@@ -349,7 +349,7 @@ class TeamSystem(commands.Cog):
                 'recruiting': True
             }
             
-            if not self.supabase.create_team(team_data):
+            if not await self.supabase.create_team(team_data):
                 await interaction.response.send_message(
                     "❌ Failed to create team. Please try again.",
                     ephemeral=True
@@ -357,7 +357,7 @@ class TeamSystem(commands.Cog):
                 return
             
             # Add category
-            self.supabase.add_team_category(guild_id, name, category.value)
+            await self.supabase.add_team_category(guild_id, name, category.value)
             
             # Add leader as first member
             leader_data = {
@@ -366,7 +366,7 @@ class TeamSystem(commands.Cog):
                 'user_id': str(interaction.user.id),
                 'user_name': interaction.user.display_name
             }
-            self.supabase.add_team_member(leader_data)
+            await self.supabase.add_team_member(leader_data)
             
             # Add initial members
             added_members = []
@@ -379,7 +379,7 @@ class TeamSystem(commands.Cog):
                         'user_id': member_id,
                         'user_name': member_name
                     }
-                    if self.supabase.add_team_member(member_data):
+                    if await self.supabase.add_team_member(member_data):
                         added_members.append(member_name)
             
             category_emojis = {
@@ -432,7 +432,7 @@ class TeamSystem(commands.Cog):
             guild_id = str(interaction.guild_id)
             
             # Get leader's team
-            leader_team = self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
+            leader_team = await self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
             
             if not leader_team:
                 await interaction.response.send_message(
@@ -451,7 +451,7 @@ class TeamSystem(commands.Cog):
                 return
             
             # Check if category already added
-            categories = self.supabase.get_team_categories(guild_id, leader_team['name'])
+            categories = await self.supabase.get_team_categories(guild_id, leader_team['name'])
             if category.value in categories:
                 await interaction.response.send_message(
                     f"❌ Your team already competes in **{category.value}**!",
@@ -460,7 +460,7 @@ class TeamSystem(commands.Cog):
                 return
             
             # Add category
-            if self.supabase.add_team_category(guild_id, leader_team['name'], category.value):
+            if await self.supabase.add_team_category(guild_id, leader_team['name'], category.value):
                 category_emojis = {
                     "Robo War": "⚔️",
                     "Robo Soccer": "⚽",
@@ -506,7 +506,7 @@ class TeamSystem(commands.Cog):
             guild_id = str(interaction.guild_id)
             
             # Get leader's team
-            leader_team = self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
+            leader_team = await self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
             
             if not leader_team:
                 await interaction.response.send_message(
@@ -516,7 +516,7 @@ class TeamSystem(commands.Cog):
                 return
             
             # Check if category exists
-            categories = self.supabase.get_team_categories(guild_id, leader_team['name'])
+            categories = await self.supabase.get_team_categories(guild_id, leader_team['name'])
             if category.value not in categories:
                 await interaction.response.send_message(
                     f"❌ Your team doesn't compete in **{category.value}**!",
@@ -525,7 +525,7 @@ class TeamSystem(commands.Cog):
                 return
             
             # Remove category
-            if self.supabase.remove_team_category(guild_id, leader_team['name'], category.value):
+            if await self.supabase.remove_team_category(guild_id, leader_team['name'], category.value):
                 await interaction.response.send_message(
                     f"✅ Removed **{category.value}** from **{leader_team['name']}**!",
                     ephemeral=True
@@ -552,7 +552,7 @@ class TeamSystem(commands.Cog):
             guild_id = str(interaction.guild_id)
             
             # Get leader's team
-            leader_team = self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
+            leader_team = await self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
             
             if not leader_team:
                 await interaction.response.send_message(
@@ -570,7 +570,7 @@ class TeamSystem(commands.Cog):
                 return
             
             # Convert to permanent
-            if self.supabase.update_team(guild_id, leader_team['name'], {'is_permanent': True}):
+            if await self.supabase.update_team(guild_id, leader_team['name'], {'is_permanent': True}):
                 await interaction.response.send_message(
                     f"✅ **{leader_team['name']}** is now a permanent team!\n"
                     f"♾️ Your team can now compete in multiple categories\n"
@@ -598,7 +598,7 @@ class TeamSystem(commands.Cog):
         try:
             guild_id = str(interaction.guild_id)
             
-            user_team = self.supabase.get_user_team(guild_id, str(interaction.user.id))
+            user_team = await self.supabase.get_user_team(guild_id, str(interaction.user.id))
             
             if not user_team:
                 await interaction.response.send_message(
@@ -631,7 +631,7 @@ class TeamSystem(commands.Cog):
         try:
             guild_id = str(interaction.guild_id)
             
-            team_data = self.supabase.get_team_by_name(guild_id, team_name)
+            team_data = await self.supabase.get_team_by_name(guild_id, team_name)
             
             if not team_data:
                 await interaction.response.send_message(
@@ -643,7 +643,7 @@ class TeamSystem(commands.Cog):
             
             embed = await self.get_team_embed(team_name, team_data, interaction.guild)
             
-            user_team = self.supabase.get_user_team(guild_id, str(interaction.user.id))
+            user_team = await self.supabase.get_user_team(guild_id, str(interaction.user.id))
             if user_team and user_team['name'] == team_name:
                 if team_data['leader_id'] == str(interaction.user.id):
                     embed.set_author(name="Your Team (You are the leader)", icon_url=interaction.user.display_avatar.url)
@@ -688,7 +688,7 @@ class TeamSystem(commands.Cog):
         try:
             guild_id = str(interaction.guild_id)
             
-            teams = self.supabase.get_all_teams(guild_id)
+            teams = await self.supabase.get_all_teams(guild_id)
             
             if not teams:
                 await interaction.response.send_message(
@@ -707,7 +707,7 @@ class TeamSystem(commands.Cog):
             if category:
                 filtered_teams = []
                 for team in teams:
-                    categories = self.supabase.get_team_categories(guild_id, team['name'])
+                    categories = await self.supabase.get_team_categories(guild_id, team['name'])
                     if category.value in categories:
                         filtered_teams.append(team)
                 teams = filtered_teams
@@ -746,12 +746,12 @@ class TeamSystem(commands.Cog):
                 leader = interaction.guild.get_member(int(team['leader_id']))
                 leader_name = leader.display_name if leader else "Unknown"
                 
-                members = self.supabase.get_team_members(guild_id, team['name'])
+                members = await self.supabase.get_team_members(guild_id, team['name'])
                 member_count = len(members)
                 max_members = team['max_members']
                 status = "🟢 Recruiting" if team.get('recruiting', True) else "🔴 Closed"
                 
-                team_categories = self.supabase.get_team_categories(guild_id, team['name'])
+                team_categories = await self.supabase.get_team_categories(guild_id, team['name'])
                 cat_list = [f"{category_emojis.get(cat, '🔧')} {cat}" for cat in team_categories]
                 categories_str = ", ".join(cat_list) if cat_list else "None"
                 
@@ -788,7 +788,7 @@ class TeamSystem(commands.Cog):
         try:
             guild_id = str(interaction.guild_id)
             
-            user_team = self.supabase.get_user_team(guild_id, str(interaction.user.id))
+            user_team = await self.supabase.get_user_team(guild_id, str(interaction.user.id))
             
             if not user_team:
                 await interaction.response.send_message(
@@ -804,7 +804,7 @@ class TeamSystem(commands.Cog):
                 )
                 return
             
-            if self.supabase.remove_team_member(guild_id, user_team['name'], str(interaction.user.id)):
+            if await self.supabase.remove_team_member(guild_id, user_team['name'], str(interaction.user.id)):
                 await interaction.response.send_message(
                     f"✅ You have left **{user_team['name']}**!",
                     ephemeral=True
@@ -844,7 +844,7 @@ class TeamSystem(commands.Cog):
         try:
             guild_id = str(interaction.guild_id)
             
-            team_data = self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
+            team_data = await self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
             
             if not team_data:
                 await interaction.response.send_message(
@@ -853,7 +853,7 @@ class TeamSystem(commands.Cog):
                 )
                 return
             
-            members = self.supabase.get_team_members(guild_id, team_data['name'])
+            members = await self.supabase.get_team_members(guild_id, team_data['name'])
             if len(members) >= team_data['max_members']:
                 await interaction.response.send_message(
                     "❌ Your team is already full!",
@@ -912,7 +912,7 @@ class TeamSystem(commands.Cog):
             guild_id = str(interaction.guild_id)
 
             # Get leader's team
-            leader_team = self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
+            leader_team = await self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
 
             if not leader_team:
                 await interaction.response.send_message(
@@ -922,7 +922,7 @@ class TeamSystem(commands.Cog):
                 return
 
             # Check if team is full
-            members = self.supabase.get_team_members(guild_id, leader_team['name'])
+            members = await self.supabase.get_team_members(guild_id, leader_team['name'])
             if len(members) >= leader_team['max_members']:
                 await interaction.response.send_message(
                     f"❌ Your team is full ({leader_team['max_members']} members)!\n"
@@ -937,7 +937,7 @@ class TeamSystem(commands.Cog):
                 display_name = user.display_name
 
                 # Check if user is already in a team
-                existing_team = self.supabase.get_user_team(guild_id, user_id)
+                existing_team = await self.supabase.get_user_team(guild_id, user_id)
                 if existing_team:
                     await interaction.response.send_message(
                         f"❌ {user.mention} is already in team **{existing_team['name']}**!",
@@ -966,7 +966,7 @@ class TeamSystem(commands.Cog):
                 'user_name': display_name
             }
 
-            if self.supabase.add_team_member(member_data):
+            if await self.supabase.add_team_member(member_data):
                 if user:
                     await interaction.response.send_message(
                         f"✅ Added {user.mention} to **{leader_team['name']}**!",
@@ -1017,7 +1017,7 @@ class TeamSystem(commands.Cog):
             guild_id = str(interaction.guild_id)
 
             # Get leader's team
-            leader_team = self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
+            leader_team = await self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
 
             if not leader_team:
                 await interaction.response.send_message(
@@ -1035,7 +1035,7 @@ class TeamSystem(commands.Cog):
                 return
 
             # Get team members
-            members = self.supabase.get_team_members(guild_id, leader_team['name'])
+            members = await self.supabase.get_team_members(guild_id, leader_team['name'])
 
             # Find the member to remove
             member_to_remove = None
@@ -1076,7 +1076,7 @@ class TeamSystem(commands.Cog):
                     return
 
             # Remove member
-            if self.supabase.remove_team_member(guild_id, leader_team['name'], member_to_remove['user_id']):
+            if await self.supabase.remove_team_member(guild_id, leader_team['name'], member_to_remove['user_id']):
                 await interaction.response.send_message(
                     f"✅ Removed **{member_to_remove['user_name']}** from **{leader_team['name']}**!",
                     ephemeral=True
@@ -1113,7 +1113,7 @@ class TeamSystem(commands.Cog):
             guild_id = str(interaction.guild_id)
 
             # Save to database
-            if self.supabase.set_setting(f'team_channel_{guild_id}', str(channel.id)):
+            if await self.supabase.set_setting(f'team_channel_{guild_id}', str(channel.id)):
                 embed = discord.Embed(
                     title="✅ Team Channel Set",
                     description=f"Team announcements will now be sent to {channel.mention}",
@@ -1163,7 +1163,7 @@ class TeamSystem(commands.Cog):
             guild_id = str(interaction.guild_id)
 
             # Get team channel
-            team_channel_id = self.supabase.get_setting(f'team_channel_{guild_id}')
+            team_channel_id = await self.supabase.get_setting(f'team_channel_{guild_id}')
 
             if not team_channel_id:
                 await interaction.response.send_message(

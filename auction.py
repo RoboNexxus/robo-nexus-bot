@@ -9,7 +9,7 @@ import logging
 import requests
 from datetime import datetime
 from typing import Optional
-from supabase_api import get_supabase_api
+from async_supabase_wrapper import get_async_supabase
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class AuctionSystem(commands.Cog):
     
     def __init__(self, bot):
         self.bot = bot
-        self.db = get_supabase_api()
+        self.db = get_async_supabase()
         logger.info("Auction system initialized with PostgreSQL")
     
     def is_admin(self, member: discord.Member) -> bool:
@@ -27,7 +27,7 @@ class AuctionSystem(commands.Cog):
     
     async def get_auction_channel(self):
         """Get the auction channel from database"""
-        channel_id = self.db.get_setting('auction_channel_id')
+        channel_id = await self.db.get_setting('auction_channel_id')
         if channel_id:
             return self.bot.get_channel(int(channel_id))
         return None
@@ -78,7 +78,7 @@ class AuctionSystem(commands.Cog):
                 'end_time': None
             }
             
-            auction_id = self.db.create_auction(auction_data)
+            auction_id = await self.db.create_auction(auction_data)
             
             embed = discord.Embed(
                 title="✅ Auction Created!",
@@ -100,7 +100,7 @@ class AuctionSystem(commands.Cog):
     async def post_auction_listing(self, auction_id: int):
         """Post auction in channel"""
         try:
-            auction = self.db.get_auction(auction_id)
+            auction = await self.db.get_auction(auction_id)
             if not auction:
                 return
             
@@ -128,7 +128,7 @@ class AuctionSystem(commands.Cog):
             if auction['image_url']:
                 embed.set_image(url=auction['image_url'])
             
-            bids = self.db.get_auction_bids(auction_id)
+            bids = await self.db.get_auction_bids(auction_id)
             embed.set_footer(text=f"Listed by {auction['seller_name']} • Auction #{auction_id} • {len(bids)} bid(s)")
             
             await channel.send(embed=embed)
@@ -143,7 +143,7 @@ class AuctionSystem(commands.Cog):
             await interaction.response.defer()
             
             # Get auctions from PostgreSQL database
-            auctions = self.db.get_all_auctions('active')
+            auctions = await self.db.get_all_auctions('active')
             
             logger.info(f"Found {len(auctions)} active auctions in database")
             
@@ -163,7 +163,7 @@ class AuctionSystem(commands.Cog):
             )
             
             for auction in auctions[:10]:
-                bids = self.db.get_auction_bids(auction['id'])
+                bids = await self.db.get_auction_bids(auction['id'])
                 
                 embed.add_field(
                     name=f"#{auction['id']} - {auction['product_name']}",
@@ -188,12 +188,12 @@ class AuctionSystem(commands.Cog):
     async def auction_view(self, interaction: discord.Interaction, auction_id: int):
         """View detailed auction information"""
         try:
-            auction = self.db.get_auction(auction_id)
+            auction = await self.db.get_auction(auction_id)
             if not auction:
                 await interaction.response.send_message("❌ Auction not found!", ephemeral=True)
                 return
             
-            bids = self.db.get_auction_bids(auction_id)
+            bids = await self.db.get_auction_bids(auction_id)
             
             embed = discord.Embed(
                 title=f"🔍 Auction #{auction_id} - {auction['product_name']}",
@@ -237,7 +237,7 @@ class AuctionSystem(commands.Cog):
     async def bid(self, interaction: discord.Interaction, auction_id: int, amount: float):
         """Place a bid"""
         try:
-            auction = self.db.get_auction(auction_id)
+            auction = await self.db.get_auction(auction_id)
             if not auction:
                 await interaction.response.send_message("❌ Auction not found!", ephemeral=True)
                 return
@@ -257,7 +257,7 @@ class AuctionSystem(commands.Cog):
                 )
                 return
             
-            success = self.db.place_bid(
+            success = await self.db.place_bid(
                 auction_id,
                 str(interaction.user.id),
                 interaction.user.display_name,
@@ -287,7 +287,7 @@ class AuctionSystem(commands.Cog):
     async def buy_now(self, interaction: discord.Interaction, auction_id: int):
         """Instant purchase"""
         try:
-            auction = self.db.get_auction(auction_id)
+            auction = await self.db.get_auction(auction_id)
             if not auction:
                 await interaction.response.send_message("❌ Auction not found!", ephemeral=True)
                 return
@@ -304,7 +304,7 @@ class AuctionSystem(commands.Cog):
                 await interaction.response.send_message("❌ You can't buy your own item!", ephemeral=True)
                 return
             
-            success = self.db.place_bid(
+            success = await self.db.place_bid(
                 auction_id,
                 str(interaction.user.id),
                 interaction.user.display_name,
@@ -315,12 +315,12 @@ class AuctionSystem(commands.Cog):
                 # Update auction status to sold using Supabase API
                 try:
                     # Get current auction data
-                    auction = self.db.get_auction(auction_id)
+                    auction = await self.db.get_auction(auction_id)
                     if auction:
                         # Update status to sold
                         update_response = requests.patch(
                             f"{self.db.url}/rest/v1/auctions?id=eq.{auction_id}",
-                            headers=self.db.headers,
+                            headers=await self.db.headers,
                             json={"status": "sold"},
                             timeout=10
                         )
@@ -353,7 +353,7 @@ class AuctionSystem(commands.Cog):
     async def my_auctions(self, interaction: discord.Interaction):
         """View your auctions"""
         try:
-            all_auctions = self.db.get_all_auctions('active')
+            all_auctions = await self.db.get_all_auctions('active')
             user_auctions = [a for a in all_auctions if a['seller_id'] == str(interaction.user.id)]
             
             if not user_auctions:
@@ -371,7 +371,7 @@ class AuctionSystem(commands.Cog):
             )
             
             for auction in user_auctions:
-                bids = self.db.get_auction_bids(auction['id'])
+                bids = await self.db.get_auction_bids(auction['id'])
                 embed.add_field(
                     name=f"#{auction['id']} - {auction['product_name']}",
                     value=f"💰 ₹{auction['current_price']:,.2f} • 📊 {len(bids)} bid(s)",
@@ -388,11 +388,11 @@ class AuctionSystem(commands.Cog):
     async def my_bids(self, interaction: discord.Interaction):
         """View your bids"""
         try:
-            all_auctions = self.db.get_all_auctions('active')
+            all_auctions = await self.db.get_all_auctions('active')
             user_bids = []
             
             for auction in all_auctions:
-                bids = self.db.get_auction_bids(auction['id'])
+                bids = await self.db.get_auction_bids(auction['id'])
                 user_bid = None
                 for bid in bids:
                     if bid['bidder_id'] == str(interaction.user.id):

@@ -14,8 +14,8 @@ class AdminCommands(commands.Cog):
     
     def __init__(self, bot):
         self.bot = bot
-        from supabase_api import get_supabase_api
-        self.db = get_supabase_api()
+        from async_supabase_wrapper import get_async_supabase
+        self.db = get_async_supabase()
     
     @app_commands.command(name="set_birthday_channel", description="[ADMIN] Set the channel for birthday announcements")
     @app_commands.describe(channel="The channel where birthday messages will be sent")
@@ -51,7 +51,7 @@ class AdminCommands(commands.Cog):
                 return
             
             # Save the channel configuration
-            success = self.db.set_setting(f'birthday_channel_{interaction.guild.id}', str(channel.id))
+            success = await self.db.set_setting(f'birthday_channel_{interaction.guild.id}', str(channel.id))
             
             if success:
                 embed = discord.Embed(
@@ -105,7 +105,7 @@ class AdminCommands(commands.Cog):
                 return
             
             # Get current configuration
-            channel_id = self.db.get_setting(f'birthday_channel_{interaction.guild.id}')
+            channel_id = await self.db.get_setting(f'birthday_channel_{interaction.guild.id}')
             if channel_id:
                 channel_id = int(channel_id)
             
@@ -137,7 +137,7 @@ class AdminCommands(commands.Cog):
                 )
             
             # Get birthday statistics
-            all_birthdays = self.db.get_all_birthdays()
+            all_birthdays = await self.db.get_all_birthdays()
             guild_birthdays = []
             
             for birthday in all_birthdays:
@@ -201,12 +201,12 @@ class AdminCommands(commands.Cog):
                 return
             
             # Get verification data from database
-            from supabase_api import get_supabase_api
-            db = get_supabase_api()
+            from async_supabase_wrapper import get_async_supabase
+            db = get_async_supabase()
             
             # Get all user profiles (verified users)
             try:
-                profiles = db.get_all_user_profiles()
+                profiles = await db.get_all_user_profiles()
             except Exception as e:
                 logger.error(f"Error getting user profiles: {e}")
                 profiles = []
@@ -330,126 +330,7 @@ class AdminCommands(commands.Cog):
             )
             await interaction.followup.send(embed=error_embed)
     
-    @app_commands.command(name="reset_birthdays", description="[ADMIN] Delete ALL birthdays from database")
-    @app_commands.default_permissions(administrator=True)
-    async def reset_birthdays(self, interaction: discord.Interaction):
-        """Delete all birthdays from the database"""
-        try:
-            await interaction.response.defer(ephemeral=True)
-            
-            # Check if user has administrator permissions
-            if not interaction.user.guild_permissions.administrator:
-                embed = discord.Embed(
-                    title="❌ Permission Denied",
-                    description="You need Administrator permissions to reset birthdays.",
-                    color=discord.Color.red()
-                )
-                await interaction.followup.send(embed=embed)
-                return
-            
-            # Get count before deletion
-            all_birthdays = self.db.get_all_birthdays()
-            count = len(all_birthdays)
-            
-            if count == 0:
-                embed = discord.Embed(
-                    title="📋 No Birthdays",
-                    description="There are no birthdays to delete.",
-                    color=discord.Color.orange()
-                )
-                await interaction.followup.send(embed=embed)
-                return
-            
-            # Delete all birthdays
-            success = self.db.delete_all_birthdays()
-            
-            if success:
-                embed = discord.Embed(
-                    title="✅ Birthdays Reset",
-                    description=f"Successfully deleted all birthdays from the database.",
-                    color=discord.Color.green()
-                )
-                embed.add_field(
-                    name="⚠️ Warning",
-                    value="This action cannot be undone. Users will need to re-register their birthdays.",
-                    inline=False
-                )
-                
-                await interaction.followup.send(embed=embed)
-                logger.info(f"All birthdays reset by {interaction.user}")
-            else:
-                embed = discord.Embed(
-                    title="❌ Reset Failed",
-                    description="There was an error deleting birthdays from the database.",
-                    color=discord.Color.red()
-                )
-                await interaction.followup.send(embed=embed)
-            
-        except Exception as e:
-            logger.error(f"Error in reset_birthdays: {e}")
-            
-            error_embed = discord.Embed(
-                title="❌ Something went wrong",
-                description="An unexpected error occurred while resetting birthdays.",
-                color=discord.Color.red()
-            )
-            await interaction.followup.send(embed=error_embed)
     
-    @app_commands.command(name="reset_auctions", description="[ADMIN] Delete ALL auctions from database")
-    @app_commands.default_permissions(administrator=True)
-    async def reset_auctions(self, interaction: discord.Interaction):
-        """Delete all auctions from the database"""
-        try:
-            await interaction.response.defer(ephemeral=True)
-            
-            # Check if user has administrator permissions
-            if not interaction.user.guild_permissions.administrator:
-                embed = discord.Embed(
-                    title="❌ Permission Denied",
-                    description="You need Administrator permissions to reset auctions.",
-                    color=discord.Color.red()
-                )
-                await interaction.followup.send(embed=embed)
-                return
-            
-            # Get count before deletion
-            all_auctions = self.db.get_all_auctions('active')
-            count = len(all_auctions)
-            
-            # Delete all auctions and bids
-            success = self.db.delete_all_auctions()
-            
-            if success:
-                embed = discord.Embed(
-                    title="✅ Auctions Reset",
-                    description=f"Successfully deleted all auctions and bids from the database.",
-                    color=discord.Color.green()
-                )
-                embed.add_field(
-                    name="⚠️ Warning",
-                    value="This action cannot be undone. All auction data has been permanently deleted.",
-                    inline=False
-                )
-                
-                await interaction.followup.send(embed=embed)
-                logger.info(f"All auctions reset by {interaction.user}")
-            else:
-                embed = discord.Embed(
-                    title="❌ Reset Failed",
-                    description="There was an error deleting auctions from the database.",
-                    color=discord.Color.red()
-                )
-                await interaction.followup.send(embed=embed)
-            
-        except Exception as e:
-            logger.error(f"Error in reset_auctions: {e}")
-            
-            error_embed = discord.Embed(
-                title="❌ Something went wrong",
-                description="An unexpected error occurred while resetting auctions.",
-                color=discord.Color.red()
-            )
-            await interaction.followup.send(embed=error_embed)
     
     @app_commands.command(name="purge", description="[ADMIN] Delete multiple messages")
     @app_commands.describe(
@@ -505,130 +386,6 @@ class AdminCommands(commands.Cog):
                 ephemeral=True
             )
     
-    @app_commands.command(name="reset_all_except_auctions", description="[ADMIN] Reset ALL data EXCEPT auctions")
-    @app_commands.default_permissions(administrator=True)
-    async def reset_all_except_auctions(self, interaction: discord.Interaction):
-        """Delete all birthdays, user profiles, and welcome data but keep auctions"""
-        try:
-            await interaction.response.defer(ephemeral=True)
-            
-            # Check if user has administrator permissions
-            if not interaction.user.guild_permissions.administrator:
-                embed = discord.Embed(
-                    title="❌ Permission Denied",
-                    description="You need Administrator permissions to reset data.",
-                    color=discord.Color.red()
-                )
-                await interaction.followup.send(embed=embed)
-                return
-            
-            # Get counts before deletion
-            all_birthdays = self.db.get_all_birthdays()
-            birthday_count = len(all_birthdays)
-            
-            all_profiles = self.db.get_all_user_profiles()
-            profile_count = len(all_profiles)
-            
-            all_auctions = self.db.get_all_auctions('active')
-            auction_count = len(all_auctions)
-            
-            bids_count = 0
-            for auction in all_auctions:
-                bids = self.db.get_auction_bids(auction['id'])
-                bids_count += len(bids)
-            
-            # Create confirmation embed
-            confirm_embed = discord.Embed(
-                title="⚠️ CONFIRM DATA RESET",
-                description="This will delete ALL data EXCEPT auctions!",
-                color=discord.Color.orange()
-            )
-            confirm_embed.add_field(
-                name="❌ Will DELETE:",
-                value=f"• **{birthday_count}** birthdays\n• **{profile_count}** user profiles",
-                inline=False
-            )
-            confirm_embed.add_field(
-                name="✅ Will KEEP:",
-                value=f"• **{auction_count}** auctions\n• **{bids_count}** bids",
-                inline=False
-            )
-            confirm_embed.add_field(
-                name="⚠️ Warning",
-                value="This action **CANNOT BE UNDONE**. All deleted data will be permanently lost.",
-                inline=False
-            )
-            confirm_embed.set_footer(text="Type 'CONFIRM' in the next 30 seconds to proceed")
-            
-            await interaction.followup.send(embed=confirm_embed)
-            
-            # Wait for confirmation
-            def check(m):
-                return m.author.id == interaction.user.id and m.channel.id == interaction.channel.id and m.content.upper() == 'CONFIRM'
-            
-            try:
-                msg = await self.bot.wait_for('message', timeout=30.0, check=check)
-                
-                # Delete the confirmation message
-                try:
-                    await msg.delete()
-                except:
-                    pass
-                
-                # Perform deletion
-                birthday_success = self.db.delete_all_birthdays()
-                profile_success = self.db.delete_all_user_profiles()
-                
-                if birthday_success and profile_success:
-                    # Send success message
-                    success_embed = discord.Embed(
-                        title="✅ Data Reset Complete",
-                        description="All data has been reset except auctions!",
-                        color=discord.Color.green()
-                    )
-                    success_embed.add_field(
-                        name="❌ Deleted:",
-                        value=f"• **{birthday_count}** birthdays\n• **{profile_count}** user profiles",
-                        inline=False
-                    )
-                    success_embed.add_field(
-                        name="✅ Kept:",
-                        value=f"• **{auction_count}** auctions\n• **{bids_count}** bids",
-                        inline=False
-                    )
-                    success_embed.add_field(
-                        name="🚀 Next Steps:",
-                        value="1. Remove members from server\n2. Add them back one at a time\n3. Each member will go through verification\n4. Bot will collect all their info",
-                        inline=False
-                    )
-                    
-                    await interaction.followup.send(embed=success_embed)
-                    logger.info(f"Data reset by {interaction.user} - kept {auction_count} auctions, deleted {birthday_count} birthdays, {profile_count} profiles")
-                else:
-                    error_embed = discord.Embed(
-                        title="❌ Reset Failed",
-                        description="There was an error deleting some data. Please check the logs.",
-                        color=discord.Color.red()
-                    )
-                    await interaction.followup.send(embed=error_embed)
-                
-            except TimeoutError:
-                timeout_embed = discord.Embed(
-                    title="❌ Reset Cancelled",
-                    description="Confirmation not received within 30 seconds. No data was deleted.",
-                    color=discord.Color.red()
-                )
-                await interaction.followup.send(embed=timeout_embed)
-            
-        except Exception as e:
-            logger.error(f"Error in reset_all_except_auctions: {e}")
-            
-            error_embed = discord.Embed(
-                title="❌ Something went wrong",
-                description="An unexpected error occurred while resetting data.",
-                color=discord.Color.red()
-            )
-            await interaction.followup.send(embed=error_embed)
 
     @app_commands.command(name="test_birthday", description="[ADMIN] Manually trigger birthday check for today")
     @app_commands.default_permissions(administrator=True)
@@ -662,7 +419,7 @@ class AdminCommands(commands.Cog):
                 return
             
             # Get birthday channel
-            channel_id = self.db.get_setting(f'birthday_channel_{interaction.guild.id}')
+            channel_id = await self.db.get_setting(f'birthday_channel_{interaction.guild.id}')
             if channel_id:
                 channel_id = int(channel_id)
             
@@ -726,6 +483,51 @@ class AdminCommands(commands.Cog):
                 f"❌ Error running birthday check: {str(e)[:100]}",
                 ephemeral=True
             )
+
+
+    @app_commands.command(name="clear_duplicate_commands", description="[ADMIN] Clear duplicate slash commands")
+    @app_commands.default_permissions(administrator=True)
+    async def clear_duplicate_commands(self, interaction: discord.Interaction):
+        """Clear all slash commands and resync to remove duplicates"""
+        try:
+            if not interaction.user.guild_permissions.administrator:
+                await interaction.response.send_message(
+                    "❌ You need Administrator permissions to use this command.",
+                    ephemeral=True
+                )
+                return
+
+            await interaction.response.defer(ephemeral=True)
+
+            # Clear both global and guild commands
+            guild = discord.Object(id=interaction.guild_id)
+            self.bot.tree.clear_commands(guild=guild)
+            self.bot.tree.clear_commands(guild=None)
+
+            # Sync to guild
+            synced = await self.bot.tree.sync(guild=guild)
+
+            embed = discord.Embed(
+                title="✅ Commands Cleared",
+                description=f"Successfully cleared duplicate commands and resynced.\n\n**{len(synced)}** commands are now available.",
+                color=discord.Color.green()
+            )
+            embed.add_field(
+                name="⚠️ Note",
+                value="It may take a few minutes for changes to appear in Discord.\nTry restarting your Discord app if commands still appear duplicated.",
+                inline=False
+            )
+
+            await interaction.followup.send(embed=embed)
+            logger.info(f"Commands cleared and resynced by {interaction.user}: {len(synced)} commands")
+
+        except Exception as e:
+            logger.error(f"Error clearing duplicate commands: {e}")
+            await interaction.followup.send(
+                f"❌ Error clearing commands: {str(e)[:100]}",
+                ephemeral=True
+            )
+
 
 async def setup(bot):
     """Add the AdminCommands cog to the bot"""

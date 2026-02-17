@@ -54,13 +54,13 @@ class BirthdayCommands(commands.Cog):
             birthday_string = birthday.strftime('%m-%d')
             
             # Register the birthday in birthdays table
-            success = self.db.add_birthday(interaction.user.id, birthday_string)
+            success = await self.db.add_birthday(interaction.user.id, birthday_string)
             
             # Also update user profile if it exists
             try:
-                from supabase_api import get_supabase_api
-                supabase = get_supabase_api()
-                profile = supabase.get_user_profile(str(interaction.user.id))
+                from async_supabase_wrapper import get_async_supabase
+                supabase = get_async_supabase()
+                profile = await supabase.get_user_profile(str(interaction.user.id))
                 if profile:
                     # Update the birthday in user profile too (use string format)
                     supabase.update_user_profile(str(interaction.user.id), {"birthday": birthday_string})
@@ -121,7 +121,7 @@ class BirthdayCommands(commands.Cog):
             await interaction.response.defer(ephemeral=True)
             
             # Get user's birthday
-            birthday = self.db.get_birthday(interaction.user.id)
+            birthday = await self.db.get_birthday(interaction.user.id)
             
             if birthday:
                 formatted_date = DateParser.format_birthday(birthday)
@@ -170,7 +170,7 @@ class BirthdayCommands(commands.Cog):
             await interaction.response.defer()
             
             # Get the user's birthday
-            birthday = self.db.get_birthday(user.id)
+            birthday = await self.db.get_birthday(user.id)
             
             if birthday:
                 formatted_date = DateParser.format_birthday(birthday)
@@ -210,7 +210,7 @@ class BirthdayCommands(commands.Cog):
             await interaction.response.defer(ephemeral=True)
             
             # Check if user has a birthday registered
-            existing_birthday = self.db.get_birthday(interaction.user.id)
+            existing_birthday = await self.db.get_birthday(interaction.user.id)
             
             if not existing_birthday:
                 embed = discord.Embed(
@@ -222,7 +222,7 @@ class BirthdayCommands(commands.Cog):
                 return
             
             # Remove the birthday
-            success = self.db.remove_birthday(interaction.user.id)
+            success = await self.db.remove_birthday(interaction.user.id)
             
             if success:
                 embed = discord.Embed(
@@ -264,7 +264,7 @@ class BirthdayCommands(commands.Cog):
             await interaction.response.defer()
             
             # Get all birthdays
-            all_birthdays = self.db.get_all_birthdays()
+            all_birthdays = await self.db.get_all_birthdays()
             
             if not all_birthdays:
                 embed = discord.Embed(

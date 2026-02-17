@@ -1,4 +1,4 @@
-from supabase_api import get_supabase_api
+from async_supabase_wrapper import get_async_supabase
 """
 Welcome System for Robo Nexus Bot
 Handles new member onboarding with name, class, email, and social links collection
@@ -12,7 +12,7 @@ import re
 import asyncio
 from typing import Optional, Dict
 import json
-# from supabase_api import get_supabase_api
+# from async_supabase_wrapper import get_async_supabase
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ class WelcomeSystem(commands.Cog):
     
     def __init__(self, bot):
         self.bot = bot
-        self.db = get_supabase_api()
+        self.db = get_async_supabase()
         self.pending_users = {}  # Store users waiting for verification (temporary, in memory)
         
         # Class roles mapping
@@ -43,15 +43,15 @@ class WelcomeSystem(commands.Cog):
     def get_welcome_channel_id(self) -> Optional[int]:
         """Get welcome channel ID from PostgreSQL"""
         try:
-            channel_id = self.db.get_setting('welcome_channel_id')
+            channel_id = await self.db.get_setting('welcome_channel_id')
             return int(channel_id) if channel_id else None
         except Exception as e:
             logger.error(f"Error getting welcome channel ID: {e}")
             # Reconnect and retry
-            # from supabase_api import get_supabase_api
-            self.db = get_supabase_api()
+            # from async_supabase_wrapper import get_async_supabase
+            self.db = get_async_supabase()
             try:
-                channel_id = self.db.get_setting('welcome_channel_id')
+                channel_id = await self.db.get_setting('welcome_channel_id')
                 return int(channel_id) if channel_id else None
             except:
                 return None
@@ -63,22 +63,22 @@ class WelcomeSystem(commands.Cog):
         except Exception as e:
             logger.error(f"Error setting welcome channel ID: {e}")
             # Reconnect and retry
-            # from supabase_api import get_supabase_api
-            self.db = get_supabase_api()
+            # from async_supabase_wrapper import get_async_supabase
+            self.db = get_async_supabase()
             self.db.set_setting('welcome_channel_id', str(channel_id))
     
     def get_self_roles_channel_id(self) -> Optional[int]:
         """Get self-roles channel ID from PostgreSQL"""
         try:
-            channel_id = self.db.get_setting('self_roles_channel_id')
+            channel_id = await self.db.get_setting('self_roles_channel_id')
             return int(channel_id) if channel_id else None
         except Exception as e:
             logger.error(f"Error getting self-roles channel ID: {e}")
             # Reconnect and retry
-            # from supabase_api import get_supabase_api
-            self.db = get_supabase_api()
+            # from async_supabase_wrapper import get_async_supabase
+            self.db = get_async_supabase()
             try:
-                channel_id = self.db.get_setting('self_roles_channel_id')
+                channel_id = await self.db.get_setting('self_roles_channel_id')
                 return int(channel_id) if channel_id else None
             except:
                 return None
@@ -90,13 +90,13 @@ class WelcomeSystem(commands.Cog):
         except Exception as e:
             logger.error(f"Error setting self-roles channel ID: {e}")
             # Reconnect and retry
-            # from supabase_api import get_supabase_api
-            self.db = get_supabase_api()
+            # from async_supabase_wrapper import get_async_supabase
+            self.db = get_async_supabase()
             self.db.set_setting('self_roles_channel_id', str(channel_id))
     
     def get_user_profile(self, user_id: int) -> Optional[Dict]:
         """Get user profile from PostgreSQL"""
-        profile = self.db.get_user_profile(str(user_id))
+        profile = await self.db.get_user_profile(str(user_id))
         if profile and profile.get('social_links'):
             # Parse JSON field if it's a string
             if isinstance(profile['social_links'], str):
@@ -110,7 +110,7 @@ class WelcomeSystem(commands.Cog):
             profile_data['social_links'] = json.dumps(profile_data['social_links'])
         
         profile_data['user_id'] = str(user_id)
-        return self.db.create_user_profile(profile_data)
+        return await self.db.create_user_profile(profile_data)
     
     def update_user_profile(self, user_id: int, updates: Dict) -> bool:
         """Update user profile in PostgreSQL"""
@@ -118,7 +118,7 @@ class WelcomeSystem(commands.Cog):
         if 'social_links' in updates and isinstance(updates['social_links'], dict):
             updates['social_links'] = json.dumps(updates['social_links'])
         
-        return self.db.update_user_profile(str(user_id), updates)
+        return await self.db.update_user_profile(str(user_id), updates)
     
     def validate_email(self, email: str) -> bool:
         """Validate Gmail address"""
@@ -1138,7 +1138,7 @@ class WelcomeSystem(commands.Cog):
         )
         
         # Statistics
-        profile_count = self.db.count_user_profiles()
+        profile_count = await self.db.count_user_profiles()
         embed.add_field(
             name="📊 Statistics",
             value=f"• **{len(self.pending_users)}** users in verification\n• **{profile_count}** completed profiles",
@@ -1257,7 +1257,7 @@ class WelcomeSystem(commands.Cog):
         )
         
         # Statistics
-        profile_count = self.db.count_user_profiles()
+        profile_count = await self.db.count_user_profiles()
         embed.add_field(
             name="📊 Statistics",
             value=f"**{len(self.pending_users)}** pending verifications\n**{profile_count}** completed profiles",
@@ -1281,13 +1281,13 @@ class WelcomeSystem(commands.Cog):
         
         try:
             # Check auctions
-            auctions = self.db.get_all_auctions('active')
+            auctions = await self.db.get_all_auctions('active')
             
             # Check user profiles
-            profile = self.db.get_user_profile(str(interaction.user.id))
+            profile = await self.db.get_user_profile(str(interaction.user.id))
             
             # Check birthdays
-            birthdays = self.db.get_all_birthdays()
+            birthdays = await self.db.get_all_birthdays()
             
             embed = discord.Embed(
                 title="🔍 Database Debug Info",
@@ -1328,7 +1328,7 @@ class WelcomeSystem(commands.Cog):
         user_id = str(user.id)
         
         # Get profile from Supabase
-        profile = self.db.get_user_profile(user_id)
+        profile = await self.db.get_user_profile(user_id)
         if not profile:
             await interaction.followup.send(f"❌ No profile found for {user.display_name}.", ephemeral=True)
             return
@@ -1628,7 +1628,7 @@ class WelcomeSystem(commands.Cog):
             import csv
             import io
             
-            all_profiles = self.db.get_all_user_profiles()
+            all_profiles = await self.db.get_all_user_profiles()
             
             if not all_profiles:
                 await interaction.followup.send("❌ No profiles to export.", ephemeral=True)

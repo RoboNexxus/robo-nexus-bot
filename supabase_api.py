@@ -347,85 +347,8 @@ class SupabaseAPI:
             logger.error(f"Error removing birthday for {user_id}: {e}")
             return False
     
-    # MISSING METHODS - CRITICAL FIXES
     
-    def delete_all_birthdays(self) -> bool:
-        """Delete all birthdays from the database"""
-        try:
-            response = requests.delete(
-                f"{self.url}/rest/v1/birthdays",
-                headers=self.headers,
-                timeout=10
-            )
-            
-            if response.status_code == 204:
-                logger.info("All birthdays deleted successfully")
-                return True
-            else:
-                logger.error(f"Failed to delete all birthdays: {response.status_code} - {response.text}")
-                return False
-        except requests.exceptions.Timeout:
-            logger.error("Timeout deleting all birthdays")
-            return False
-        except Exception as e:
-            logger.error(f"Error deleting all birthdays: {e}")
-            return False
     
-    def delete_all_auctions(self) -> bool:
-        """Delete all auctions and bids from the database"""
-        try:
-            # First delete all bids
-            response = requests.delete(
-                f"{self.url}/rest/v1/bids",
-                headers=self.headers,
-                timeout=10
-            )
-            
-            if response.status_code != 204:
-                logger.error(f"Failed to delete all bids: {response.status_code} - {response.text}")
-                return False
-            
-            # Then delete all auctions
-            response = requests.delete(
-                f"{self.url}/rest/v1/auctions",
-                headers=self.headers,
-                timeout=10
-            )
-            
-            if response.status_code == 204:
-                logger.info("All auctions and bids deleted successfully")
-                return True
-            else:
-                logger.error(f"Failed to delete all auctions: {response.status_code} - {response.text}")
-                return False
-        except requests.exceptions.Timeout:
-            logger.error("Timeout deleting all auctions")
-            return False
-        except Exception as e:
-            logger.error(f"Error deleting all auctions: {e}")
-            return False
-    
-    def delete_all_user_profiles(self) -> bool:
-        """Delete all user profiles from the database"""
-        try:
-            response = requests.delete(
-                f"{self.url}/rest/v1/user_profiles",
-                headers=self.headers,
-                timeout=10
-            )
-            
-            if response.status_code == 204:
-                logger.info("All user profiles deleted successfully")
-                return True
-            else:
-                logger.error(f"Failed to delete all user profiles: {response.status_code} - {response.text}")
-                return False
-        except requests.exceptions.Timeout:
-            logger.error("Timeout deleting all user profiles")
-            return False
-        except Exception as e:
-            logger.error(f"Error deleting all user profiles: {e}")
-            return False
     
     def count_user_profiles(self) -> int:
         """Count total user profiles"""
