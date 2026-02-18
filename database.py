@@ -71,12 +71,13 @@ class BirthdayDatabase:
     
     async def birthday_exists(self, user_id: int) -> bool:
         """Check if a birthday exists for a user"""
-        return self.get_birthday(user_id) is not None
+        birthday = await self.get_birthday(user_id)
+        return birthday is not None
     
     async def get_birthday_count(self) -> int:
         """Get total number of birthdays"""
         try:
-            birthdays = self.get_all_birthdays()
+            birthdays = await self.get_all_birthdays()
             return len(birthdays)
         except Exception as e:
             logger.error(f"Error getting birthday count: {e}")
@@ -102,27 +103,27 @@ class BirthdayDatabase:
 # Global instances for backward compatibility
 birthday_db = BirthdayDatabase()
 
-# Legacy functions for backward compatibility
-def add_birthday(user_id: int, birthday: str) -> bool:
-    return birthday_db.add_birthday(user_id, birthday)
+# Legacy functions for backward compatibility - now async
+async def add_birthday(user_id: int, birthday: str) -> bool:
+    return await birthday_db.add_birthday(user_id, birthday)
 
-def get_birthday(user_id: int) -> Optional[str]:
-    return birthday_db.get_birthday(user_id)
+async def get_birthday(user_id: int) -> Optional[str]:
+    return await birthday_db.get_birthday(user_id)
 
-def get_all_birthdays() -> List[Dict[str, Any]]:
-    return birthday_db.get_all_birthdays()
+async def get_all_birthdays() -> List[Dict[str, Any]]:
+    return await birthday_db.get_all_birthdays()
 
-def remove_birthday(user_id: int) -> bool:
-    return birthday_db.remove_birthday(user_id)
+async def remove_birthday(user_id: int) -> bool:
+    return await birthday_db.remove_birthday(user_id)
 
-def birthday_exists(user_id: int) -> bool:
-    return birthday_db.birthday_exists(user_id)
+async def birthday_exists(user_id: int) -> bool:
+    return await birthday_db.birthday_exists(user_id)
 
-def get_birthday_count() -> int:
-    return birthday_db.get_birthday_count()
+async def get_birthday_count() -> int:
+    return await birthday_db.get_birthday_count()
 
-def get_birthday_channel(guild_id: int) -> Optional[int]:
-    return birthday_db.get_birthday_channel(guild_id)
+async def get_birthday_channel(guild_id: int) -> Optional[int]:
+    return await birthday_db.get_birthday_channel(guild_id)
 
-def set_birthday_channel(guild_id: int, channel_id: int) -> bool:
-    return birthday_db.set_birthday_channel(guild_id, channel_id)
+async def set_birthday_channel(guild_id: int, channel_id: int) -> bool:
+    return await birthday_db.set_birthday_channel(guild_id, channel_id)

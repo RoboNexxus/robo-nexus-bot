@@ -56,16 +56,16 @@ class WelcomeSystem(commands.Cog):
             except:
                 return None
     
-    def set_welcome_channel_id(self, channel_id: int):
+    async def set_welcome_channel_id(self, channel_id: int):
         """Set welcome channel ID in PostgreSQL"""
         try:
-            self.db.set_setting('welcome_channel_id', str(channel_id))
+            await self.db.set_setting('welcome_channel_id', str(channel_id))
         except Exception as e:
             logger.error(f"Error setting welcome channel ID: {e}")
             # Reconnect and retry
             # from async_supabase_wrapper import get_async_supabase
             self.db = get_async_supabase()
-            self.db.set_setting('welcome_channel_id', str(channel_id))
+            await self.db.set_setting('welcome_channel_id', str(channel_id))
     
     async def get_self_roles_channel_id(self) -> Optional[int]:
         """Get self-roles channel ID from PostgreSQL"""
@@ -83,16 +83,16 @@ class WelcomeSystem(commands.Cog):
             except:
                 return None
     
-    def set_self_roles_channel_id(self, channel_id: int):
+    async def set_self_roles_channel_id(self, channel_id: int):
         """Set self-roles channel ID in PostgreSQL"""
         try:
-            self.db.set_setting('self_roles_channel_id', str(channel_id))
+            await self.db.set_setting('self_roles_channel_id', str(channel_id))
         except Exception as e:
             logger.error(f"Error setting self-roles channel ID: {e}")
             # Reconnect and retry
             # from async_supabase_wrapper import get_async_supabase
             self.db = get_async_supabase()
-            self.db.set_setting('self_roles_channel_id', str(channel_id))
+            await self.db.set_setting('self_roles_channel_id', str(channel_id))
     
     async def get_user_profile(self, user_id: int) -> Optional[Dict]:
         """Get user profile from PostgreSQL"""
@@ -339,7 +339,7 @@ class WelcomeSystem(commands.Cog):
     async def send_welcome_in_channel(self, member: discord.Member):
         """Send welcome message in self-roles channel"""
         try:
-            self_roles_channel_id = self.get_self_roles_channel_id()
+            self_roles_channel_id = await self.get_self_roles_channel_id()
             # Add fallback for welcome channel
             if not self_roles_channel_id:
                 # Fallback to hardcoded ID for SSL connection issues
@@ -519,7 +519,7 @@ class WelcomeSystem(commands.Cog):
             }
             
             # Send notification to welcome channel if configured
-            welcome_channel_id = self.get_welcome_channel_id()
+            welcome_channel_id = await self.get_welcome_channel_id()
             if welcome_channel_id:
                 channel = member.guild.get_channel(welcome_channel_id)
                 if channel:
@@ -559,7 +559,7 @@ class WelcomeSystem(commands.Cog):
                 return
             
             # Check if message is in self-roles channel or DM
-            self_roles_channel_id = self.get_self_roles_channel_id()
+            self_roles_channel_id = await self.get_self_roles_channel_id()
             is_self_roles_channel = (
                 self_roles_channel_id and 
                 message.channel.id == self_roles_channel_id
@@ -750,7 +750,7 @@ class WelcomeSystem(commands.Cog):
                 
                 # Save to birthdays table
                 from database import add_birthday
-                birthday_success = add_birthday(member.id, birthday_string)
+                birthday_success = await add_birthday(member.id, birthday_string)
                 
                 # Also save to user_profiles table (update the pending profile)
                 # This will be saved when the profile is completed
@@ -979,7 +979,7 @@ class WelcomeSystem(commands.Cog):
                 logger.info(f"Successfully verified {member.display_name}: {name}, Class {class_number}, {email}")
                 
                 # Notify in welcome channel
-                welcome_channel_id = self.get_welcome_channel_id()
+                welcome_channel_id = await self.get_welcome_channel_id()
                 if welcome_channel_id:
                     channel = member.guild.get_channel(welcome_channel_id)
                     if channel:
@@ -1110,7 +1110,7 @@ class WelcomeSystem(commands.Cog):
         )
         
         # Welcome channel
-        welcome_channel_id = self.get_welcome_channel_id()
+        welcome_channel_id = await self.get_welcome_channel_id()
         if welcome_channel_id:
             channel = interaction.guild.get_channel(welcome_channel_id)
             welcome_status = f"✅ {channel.mention}" if channel else f"❌ Channel not found (ID: {welcome_channel_id})"
@@ -1124,7 +1124,7 @@ class WelcomeSystem(commands.Cog):
         )
         
         # Self-roles channel
-        self_roles_channel_id = self.get_self_roles_channel_id()
+        self_roles_channel_id = await self.get_self_roles_channel_id()
         if self_roles_channel_id:
             channel = interaction.guild.get_channel(self_roles_channel_id)
             self_roles_status = f"✅ {channel.mention}" if channel else f"❌ Channel not found (ID: {self_roles_channel_id})"
@@ -1193,16 +1193,16 @@ class WelcomeSystem(commands.Cog):
             from database import add_birthday
             # Convert date object to MM-DD string format
             birthday_string = birthday.strftime('%m-%d')
-            birthday_success = add_birthday(interaction.user.id, birthday_string)
+            birthday_success = await add_birthday(interaction.user.id, birthday_string)
             
             if birthday_success:
                 formatted_date = DateParser.format_birthday(birthday)
                 
                 # Also update user profile if it exists
                 user_id_str = str(interaction.user.id)
-                profile = self.get_user_profile(interaction.user.id)
+                profile = await self.get_user_profile(interaction.user.id)
                 if profile:
-                    self.update_user_profile(interaction.user.id, {"birthday": birthday.isoformat()})
+                    await self.update_user_profile(interaction.user.id, {"birthday": birthday.isoformat()})
                 
                 success_embed = discord.Embed(
                     title="🎉 Birthday Registered!",
@@ -1478,7 +1478,7 @@ class WelcomeSystem(commands.Cog):
         user_id = str(user.id)
         
         # Check if user has a profile
-        profile = self.get_user_profile(int(user_id))
+        profile = await self.get_user_profile(int(user_id))
         if not profile:
             await interaction.response.send_message(
                 f"❌ No profile found for {user.display_name}. Use `/manual_verify` to create one first.",
@@ -1494,7 +1494,7 @@ class WelcomeSystem(commands.Cog):
         if name:
             old_name = profile.get('display_name', 'Unknown')
             changes.append(f"**Name:** {old_name} → {name}")
-            self.update_user_profile(int(user_id), {"display_name": name})
+            await self.update_user_profile(int(user_id), {"display_name": name})
             
             # Update nickname
             try:
@@ -1511,7 +1511,7 @@ class WelcomeSystem(commands.Cog):
             
             old_class = profile.get('class_year', 'Unknown')
             changes.append(f"**Class:** {old_class} → {class_number}")
-            self.update_user_profile(int(user_id), {"class_year": str(class_number)})
+            await self.update_user_profile(int(user_id), {"class_year": str(class_number)})
             
             # Update class role
             # Remove old class role
@@ -1532,7 +1532,7 @@ class WelcomeSystem(commands.Cog):
             
             old_email = profile.get('email', 'Not provided')
             changes.append(f"**Email:** {old_email} → {email}")
-            self.update_user_profile(int(user_id), {"email": email})
+            await self.update_user_profile(int(user_id), {"email": email})
         
         # Update phone
         if phone:
@@ -1543,7 +1543,7 @@ class WelcomeSystem(commands.Cog):
             
             old_phone = profile.get('phone', 'Not provided')
             changes.append(f"**Phone:** {old_phone} → {formatted_phone}")
-            self.update_user_profile(int(user_id), {"phone": formatted_phone})
+            await self.update_user_profile(int(user_id), {"phone": formatted_phone})
         
         # Add/update social links
         if social_links:
@@ -1564,14 +1564,14 @@ class WelcomeSystem(commands.Cog):
                     added_links.append(f"**{platform.title()}:** {url}")
                 
                 changes.append(f"**Social Links Added/Updated:**\n" + "\n".join(added_links))
-                self.update_user_profile(int(user_id), {"social_links": json.dumps(existing_links)})
+                await self.update_user_profile(int(user_id), {"social_links": json.dumps(existing_links)})
         
         if not changes:
             await interaction.followup.send("❌ No changes specified. Provide at least one field to update.", ephemeral=True)
             return
         
         # Refresh profile from database
-        profile = self.get_user_profile(int(user_id))
+        profile = await self.get_user_profile(int(user_id))
         
         # Send confirmation
         embed = discord.Embed(
@@ -1663,7 +1663,7 @@ class WelcomeSystem(commands.Cog):
                     else:
                         # Try to get from birthday system
                         from database import get_birthday
-                        birthday = get_birthday(int(user_id))
+                        birthday = await get_birthday(int(user_id))
                         if birthday:
                             parsed_birthday = DateParser.parse_birthday(birthday)
                             if parsed_birthday:
@@ -1787,7 +1787,7 @@ class WelcomeSystem(commands.Cog):
             # Save complete profile to PostgreSQL
             # Get existing birthday if any
             from database import get_birthday
-            existing_birthday = get_birthday(user.id)
+            existing_birthday = await get_birthday(user.id)
             
             profile_data = {
                 "user_id": str(user.id),

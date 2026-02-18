@@ -63,7 +63,7 @@ class BirthdayCommands(commands.Cog):
                 profile = await supabase.get_user_profile(str(interaction.user.id))
                 if profile:
                     # Update the birthday in user profile too (use string format)
-                    supabase.update_user_profile(str(interaction.user.id), {"birthday": birthday_string})
+                    await supabase.update_user_profile(str(interaction.user.id), {"birthday": birthday_string})
                     logger.info(f"Updated birthday in user profile for {interaction.user.display_name}")
             except Exception as e:
                 logger.error(f"Error updating user profile birthday: {e}")

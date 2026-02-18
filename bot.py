@@ -134,10 +134,10 @@ class RoboNexusBirthdayBot(commands.Bot):
         try:
             logger.info("Running daily birthday check...")
             
-            # Get today's birthdays using synchronous method
+            # Get today's birthdays using async method
             from datetime import date
             today_str = date.today().strftime("%m-%d")
-            todays_birthdays = self.db_manager.get_birthdays_today(today_str)
+            todays_birthdays = await self.db_manager.get_birthdays_today(today_str)
             
             if not todays_birthdays:
                 logger.info("No birthdays today")
@@ -162,7 +162,7 @@ class RoboNexusBirthdayBot(commands.Bot):
         """
         try:
             # Get the configured birthday channel from database
-            birthday_channel_id = self.db_manager.get_birthday_channel(guild.id)
+            birthday_channel_id = await self.db_manager.get_birthday_channel(guild.id)
             birthday_channel = None
             
             if birthday_channel_id:

@@ -406,7 +406,7 @@ class AdminCommands(commands.Cog):
             from datetime import datetime
             
             today = datetime.now().strftime("%m-%d")
-            all_birthdays = get_all_birthdays()
+            all_birthdays = await get_all_birthdays()
             todays_birthdays = [(b['user_id'], b['birthday']) for b in all_birthdays if b['birthday'] == today]
             
             if not todays_birthdays:

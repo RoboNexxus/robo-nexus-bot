@@ -438,7 +438,7 @@ class AuctionSystem(commands.Cog):
             await interaction.response.send_message("❌ Admin only.", ephemeral=True)
             return
         
-        self.db.set_setting('auction_channel_id', str(channel.id))
+        await self.db.set_setting('auction_channel_id', str(channel.id))
         
         embed = discord.Embed(
             title="✅ Auction Channel Set",
