@@ -488,7 +488,7 @@ class AdminCommands(commands.Cog):
     @app_commands.command(name="clear_duplicate_commands", description="[ADMIN] Clear duplicate slash commands")
     @app_commands.default_permissions(administrator=True)
     async def clear_duplicate_commands(self, interaction: discord.Interaction):
-        """Clear all slash commands and resync to remove duplicates"""
+        """Resync commands to remove duplicates (doesn't actually clear them)"""
         try:
             # CRITICAL: Defer immediately to prevent timeout
             await interaction.response.defer(ephemeral=True)
@@ -500,17 +500,14 @@ class AdminCommands(commands.Cog):
                 )
                 return
 
-            # Clear both global and guild commands
+            # Just resync - don't clear!
+            # Clearing removes commands from memory, then sync syncs nothing
             guild = discord.Object(id=interaction.guild_id)
-            self.bot.tree.clear_commands(guild=guild)
-            self.bot.tree.clear_commands(guild=None)
-
-            # Sync to guild
             synced = await self.bot.tree.sync(guild=guild)
 
             embed = discord.Embed(
-                title="✅ Commands Cleared",
-                description=f"Successfully cleared duplicate commands and resynced.\n\n**{len(synced)}** commands are now available.",
+                title="✅ Commands Resynced",
+                description=f"Successfully resynced commands.\n\n**{len(synced)}** commands are now available.",
                 color=discord.Color.green()
             )
             embed.add_field(
@@ -520,14 +517,15 @@ class AdminCommands(commands.Cog):
             )
 
             await interaction.followup.send(embed=embed)
-            logger.info(f"Commands cleared and resynced by {interaction.user}: {len(synced)} commands")
+            logger.info(f"Commands resynced by {interaction.user}: {len(synced)} commands")
 
         except Exception as e:
-            logger.error(f"Error clearing duplicate commands: {e}")
+            logger.error(f"Error resyncing commands: {e}")
             await interaction.followup.send(
-                f"❌ Error clearing commands: {str(e)[:100]}",
+                f"❌ Error resyncing commands: {str(e)[:100]}",
                 ephemeral=True
             )
+
 
 
 async def setup(bot):

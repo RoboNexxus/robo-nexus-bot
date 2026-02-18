@@ -65,14 +65,8 @@ class RoboNexusBirthdayBot(commands.Bot):
                 # Sync to specific guild for faster updates during development
                 guild = discord.Object(id=int(Config.GUILD_ID))
                 
-                # Clear existing guild commands to prevent duplicates
-                self.tree.clear_commands(guild=guild)
-                
-                # Copy global commands to guild for faster sync
-                self.tree.copy_global_to(guild=guild)
-                logger.info("Copied global commands to guild")
-                
-                # Sync to guild
+                # DON'T clear commands - just sync what we have
+                # The cogs have already registered their commands
                 synced = await self.tree.sync(guild=guild)
                 logger.info(f"✅ Synced {len(synced)} commands to guild {Config.GUILD_ID}")
             else:
