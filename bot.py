@@ -60,6 +60,9 @@ class RoboNexusBirthdayBot(commands.Bot):
             await self.load_extension('team_system')
             logger.info("Command cogs loaded successfully")
             
+            # Small delay to ensure all cogs finish registering commands
+            await asyncio.sleep(1)
+            
             # Sync slash commands
             if Config.GUILD_ID:
                 # Sync to specific guild for faster updates during development
