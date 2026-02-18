@@ -60,23 +60,20 @@ class RoboNexusBirthdayBot(commands.Bot):
             await self.load_extension('team_system')
             logger.info("Command cogs loaded successfully")
             
-            # Sync slash commands (clear duplicates)
+            # Sync slash commands
             if Config.GUILD_ID:
                 # Sync to specific guild for faster updates during development
                 guild = discord.Object(id=int(Config.GUILD_ID))
                 
-                # DON'T clear guild commands - they're already registered by cogs
-                # Only clear global commands to prevent duplicates
-                self.tree.clear_commands(guild=None)
-                logger.info("Cleared global commands (keeping guild commands)")
+                # Copy global commands to guild for faster sync
+                self.tree.copy_global_to(guild=guild)
+                logger.info("Copied global commands to guild")
                 
-                # Sync to guild (commands are registered as guild commands by cogs)
+                # Sync to guild
                 synced = await self.tree.sync(guild=guild)
                 logger.info(f"✅ Synced {len(synced)} commands to guild {Config.GUILD_ID}")
             else:
                 # Sync globally (takes up to 1 hour to propagate)
-                self.tree.clear_commands(guild=None)
-                logger.info("Cleared existing global commands")
                 synced = await self.tree.sync()
                 logger.info(f"✅ Synced {len(synced)} commands globally")
             
