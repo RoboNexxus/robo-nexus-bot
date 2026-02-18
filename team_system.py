@@ -138,12 +138,15 @@ class TeamSystem(commands.Cog):
     ):
         """Create a permanent team"""
         try:
+            # CRITICAL: Defer immediately to prevent timeout
+            await interaction.response.defer(ephemeral=True)
+            
             guild_id = str(interaction.guild_id)
             
             # Check if team name already exists
             existing_team = await self.supabase.get_team_by_name(guild_id, name)
             if existing_team:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"❌ A team named **{name}** already exists!",
                     ephemeral=True
                 )
@@ -152,7 +155,7 @@ class TeamSystem(commands.Cog):
             # Check if user already leads a team
             leader_team = await self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
             if leader_team:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"❌ You already lead **{leader_team['name']}**! You can only lead one team at a time.",
                     ephemeral=True
                 )
@@ -161,7 +164,7 @@ class TeamSystem(commands.Cog):
             # Check if user is already in a team
             user_team = await self.supabase.get_user_team(guild_id, str(interaction.user.id))
             if user_team:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"❌ You are already in **{user_team['name']}**! Leave your current team first.",
                     ephemeral=True
                 )
@@ -169,7 +172,7 @@ class TeamSystem(commands.Cog):
             
             # Validate max_members
             if max_members < 2 or max_members > 50:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Team size must be between 2 and 50!",
                     ephemeral=True
                 )
@@ -182,7 +185,7 @@ class TeamSystem(commands.Cog):
                 
                 # Check if total members (including leader) exceeds max
                 if len(member_names) + 1 > max_members:
-                    await interaction.response.send_message(
+                    await interaction.followup.send(
                         f"❌ Too many initial members! You have {len(member_names)} + you = {len(member_names) + 1}, but max is {max_members}.\n"
                         f"Either reduce initial members or increase max_members.",
                         ephemeral=True
@@ -202,7 +205,7 @@ class TeamSystem(commands.Cog):
             }
             
             if not await self.supabase.create_team(team_data):
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Failed to create team. Please try again.",
                     ephemeral=True
                 )
@@ -246,13 +249,13 @@ class TeamSystem(commands.Cog):
                 f"Use `/recruit_members` to ask for more members!"
             )
             
-            await interaction.response.send_message(response_msg, ephemeral=True)
+            await interaction.followup.send(response_msg, ephemeral=True)
             
             logger.info(f"Permanent team '{name}' created by {interaction.user} with {len(added_members)} initial members")
             
         except Exception as e:
             logger.error(f"Error creating permanent team: {e}")
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"❌ Error: {str(e)}",
                 ephemeral=True
             )
@@ -286,12 +289,15 @@ class TeamSystem(commands.Cog):
     ):
         """Create a temporary team for a specific competition"""
         try:
+            # CRITICAL: Defer immediately to prevent timeout
+            await interaction.response.defer(ephemeral=True)
+            
             guild_id = str(interaction.guild_id)
             
             # Check if team name already exists
             existing_team = await self.supabase.get_team_by_name(guild_id, name)
             if existing_team:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"❌ A team named **{name}** already exists!",
                     ephemeral=True
                 )
@@ -300,7 +306,7 @@ class TeamSystem(commands.Cog):
             # Check if user already leads a team
             leader_team = await self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
             if leader_team:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"❌ You already lead **{leader_team['name']}**! You can only lead one team at a time.",
                     ephemeral=True
                 )
@@ -309,7 +315,7 @@ class TeamSystem(commands.Cog):
             # Check if user is already in a team
             user_team = await self.supabase.get_user_team(guild_id, str(interaction.user.id))
             if user_team:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"❌ You are already in **{user_team['name']}**! Leave your current team first.",
                     ephemeral=True
                 )
@@ -317,7 +323,7 @@ class TeamSystem(commands.Cog):
             
             # Validate max_members
             if max_members < 2 or max_members > 50:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Team size must be between 2 and 50!",
                     ephemeral=True
                 )
@@ -330,7 +336,7 @@ class TeamSystem(commands.Cog):
                 
                 # Check if total members (including leader) exceeds max
                 if len(member_names) + 1 > max_members:
-                    await interaction.response.send_message(
+                    await interaction.followup.send(
                         f"❌ Too many initial members! You have {len(member_names)} + you = {len(member_names) + 1}, but max is {max_members}.\n"
                         f"Either reduce initial members or increase max_members.",
                         ephemeral=True
@@ -350,7 +356,7 @@ class TeamSystem(commands.Cog):
             }
             
             if not await self.supabase.create_team(team_data):
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Failed to create team. Please try again.",
                     ephemeral=True
                 )
@@ -405,13 +411,13 @@ class TeamSystem(commands.Cog):
             
             response_msg += f"\nUse `/recruit_members` to ask for more members!"
             
-            await interaction.response.send_message(response_msg, ephemeral=True)
+            await interaction.followup.send(response_msg, ephemeral=True)
             
             logger.info(f"Temporary team '{name}' ({category.value}) created by {interaction.user} with {len(added_members)} initial members")
             
         except Exception as e:
             logger.error(f"Error creating temporary team: {e}")
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"❌ Error: {str(e)}",
                 ephemeral=True
             )
@@ -429,13 +435,16 @@ class TeamSystem(commands.Cog):
     async def add_category(self, interaction: discord.Interaction, category: app_commands.Choice[str]):
         """Add a category to permanent team (leader only)"""
         try:
+            # CRITICAL: Defer immediately to prevent timeout
+            await interaction.response.defer(ephemeral=True)
+            
             guild_id = str(interaction.guild_id)
             
             # Get leader's team
             leader_team = await self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
             
             if not leader_team:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ You don't lead any team!",
                     ephemeral=True
                 )
@@ -443,7 +452,7 @@ class TeamSystem(commands.Cog):
             
             # Check if team is permanent
             if not leader_team.get('is_permanent', False):
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Only permanent teams can have multiple categories!\n"
                     "Temporary teams are for single competitions.",
                     ephemeral=True
@@ -453,7 +462,7 @@ class TeamSystem(commands.Cog):
             # Check if category already added
             categories = await self.supabase.get_team_categories(guild_id, leader_team['name'])
             if category.value in categories:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"❌ Your team already competes in **{category.value}**!",
                     ephemeral=True
                 )
@@ -471,21 +480,21 @@ class TeamSystem(commands.Cog):
                 }
                 emoji = category_emojis.get(category.value, "🔧")
                 
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"✅ Added {emoji} **{category.value}** to **{leader_team['name']}**!",
                     ephemeral=True
                 )
                 
                 logger.info(f"Category '{category.value}' added to team '{leader_team['name']}'")
             else:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Failed to add category. Please try again.",
                     ephemeral=True
                 )
             
         except Exception as e:
             logger.error(f"Error adding category: {e}")
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"❌ Error: {str(e)}",
                 ephemeral=True
             )
@@ -503,13 +512,16 @@ class TeamSystem(commands.Cog):
     async def remove_category(self, interaction: discord.Interaction, category: app_commands.Choice[str]):
         """Remove a category from permanent team (leader only)"""
         try:
+            # CRITICAL: Defer immediately to prevent timeout
+            await interaction.response.defer(ephemeral=True)
+            
             guild_id = str(interaction.guild_id)
             
             # Get leader's team
             leader_team = await self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
             
             if not leader_team:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ You don't lead any team!",
                     ephemeral=True
                 )
@@ -518,7 +530,7 @@ class TeamSystem(commands.Cog):
             # Check if category exists
             categories = await self.supabase.get_team_categories(guild_id, leader_team['name'])
             if category.value not in categories:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"❌ Your team doesn't compete in **{category.value}**!",
                     ephemeral=True
                 )
@@ -526,21 +538,21 @@ class TeamSystem(commands.Cog):
             
             # Remove category
             if await self.supabase.remove_team_category(guild_id, leader_team['name'], category.value):
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"✅ Removed **{category.value}** from **{leader_team['name']}**!",
                     ephemeral=True
                 )
                 
                 logger.info(f"Category '{category.value}' removed from team '{leader_team['name']}'")
             else:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Failed to remove category. Please try again.",
                     ephemeral=True
                 )
             
         except Exception as e:
             logger.error(f"Error removing category: {e}")
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"❌ Error: {str(e)}",
                 ephemeral=True
             )
@@ -549,13 +561,16 @@ class TeamSystem(commands.Cog):
     async def convert_to_permanent(self, interaction: discord.Interaction):
         """Convert temporary team to permanent (leader only)"""
         try:
+            # CRITICAL: Defer immediately to prevent timeout
+            await interaction.response.defer(ephemeral=True)
+            
             guild_id = str(interaction.guild_id)
             
             # Get leader's team
             leader_team = await self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
             
             if not leader_team:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ You don't lead any team!",
                     ephemeral=True
                 )
@@ -563,7 +578,7 @@ class TeamSystem(commands.Cog):
             
             # Check if already permanent
             if leader_team.get('is_permanent', False):
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Your team is already permanent!",
                     ephemeral=True
                 )
@@ -571,7 +586,7 @@ class TeamSystem(commands.Cog):
             
             # Convert to permanent
             if await self.supabase.update_team(guild_id, leader_team['name'], {'is_permanent': True}):
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"✅ **{leader_team['name']}** is now a permanent team!\n"
                     f"♾️ Your team can now compete in multiple categories\n"
                     f"Use `/add_category` to add more competition categories!",
@@ -580,14 +595,14 @@ class TeamSystem(commands.Cog):
                 
                 logger.info(f"Team '{leader_team['name']}' converted to permanent by {interaction.user}")
             else:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Failed to convert team. Please try again.",
                     ephemeral=True
                 )
             
         except Exception as e:
             logger.error(f"Error converting team: {e}")
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"❌ Error: {str(e)}",
                 ephemeral=True
             )
@@ -596,12 +611,15 @@ class TeamSystem(commands.Cog):
     async def my_team(self, interaction: discord.Interaction):
         """View your team information"""
         try:
+            # CRITICAL: Defer immediately to prevent timeout
+            await interaction.response.defer(ephemeral=True)
+            
             guild_id = str(interaction.guild_id)
             
             user_team = await self.supabase.get_user_team(guild_id, str(interaction.user.id))
             
             if not user_team:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ You are not part of any team yet!\n"
                     "Use `/list_teams` to see available teams or create your own!",
                     ephemeral=True
@@ -615,11 +633,11 @@ class TeamSystem(commands.Cog):
             else:
                 embed.set_author(name="Your Team", icon_url=interaction.user.display_avatar.url)
             
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await interaction.followup.send(embed=embed, ephemeral=True)
             
         except Exception as e:
             logger.error(f"Error showing team: {e}")
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"❌ Error: {str(e)}",
                 ephemeral=True
             )
@@ -629,12 +647,15 @@ class TeamSystem(commands.Cog):
     async def view_team(self, interaction: discord.Interaction, team_name: str):
         """View any team's information"""
         try:
+            # CRITICAL: Defer immediately to prevent timeout
+            await interaction.response.defer(ephemeral=True)
+            
             guild_id = str(interaction.guild_id)
             
             team_data = await self.supabase.get_team_by_name(guild_id, team_name)
             
             if not team_data:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"❌ Team **{team_name}** not found!\n"
                     "Use `/list_teams` to see all available teams.",
                     ephemeral=True
@@ -650,11 +671,11 @@ class TeamSystem(commands.Cog):
                 else:
                     embed.set_author(name="Your Team", icon_url=interaction.user.display_avatar.url)
             
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await interaction.followup.send(embed=embed, ephemeral=True)
             
         except Exception as e:
             logger.error(f"Error viewing team: {e}")
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"❌ Error: {str(e)}",
                 ephemeral=True
             )
@@ -686,12 +707,15 @@ class TeamSystem(commands.Cog):
     ):
         """List all teams"""
         try:
+            # CRITICAL: Defer immediately to prevent timeout
+            await interaction.response.defer(ephemeral=True)
+            
             guild_id = str(interaction.guild_id)
             
             teams = await self.supabase.get_all_teams(guild_id)
             
             if not teams:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ No teams have been created yet!\n"
                     "Use `/create_permanent_team` or `/create_temp_team` to create the first team!",
                     ephemeral=True
@@ -713,7 +737,7 @@ class TeamSystem(commands.Cog):
                 teams = filtered_teams
             
             if not teams:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"❌ No teams found with the selected filters!",
                     ephemeral=True
                 )
@@ -773,11 +797,11 @@ class TeamSystem(commands.Cog):
             
             embed.set_footer(text=f"Total Teams: {len(teams)}")
             
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await interaction.followup.send(embed=embed, ephemeral=True)
             
         except Exception as e:
             logger.error(f"Error listing teams: {e}")
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"❌ Error: {str(e)}",
                 ephemeral=True
             )
@@ -786,26 +810,29 @@ class TeamSystem(commands.Cog):
     async def leave_team(self, interaction: discord.Interaction):
         """Leave current team"""
         try:
+            # CRITICAL: Defer immediately to prevent timeout
+            await interaction.response.defer(ephemeral=True)
+            
             guild_id = str(interaction.guild_id)
             
             user_team = await self.supabase.get_user_team(guild_id, str(interaction.user.id))
             
             if not user_team:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ You are not part of any team!",
                     ephemeral=True
                 )
                 return
             
             if user_team['leader_id'] == str(interaction.user.id):
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ You are the team leader! Use `/disband_team` to disband or `/transfer_leadership` to transfer first.",
                     ephemeral=True
                 )
                 return
             
             if await self.supabase.remove_team_member(guild_id, user_team['name'], str(interaction.user.id)):
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"✅ You have left **{user_team['name']}**!",
                     ephemeral=True
                 )
@@ -821,14 +848,14 @@ class TeamSystem(commands.Cog):
                 
                 logger.info(f"{interaction.user} left team '{user_team['name']}'")
             else:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Failed to leave team. Please try again.",
                     ephemeral=True
                 )
             
         except Exception as e:
             logger.error(f"Error leaving team: {e}")
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"❌ Error: {str(e)}",
                 ephemeral=True
             )
@@ -842,12 +869,15 @@ class TeamSystem(commands.Cog):
     ):
         """Post a recruitment message for a team"""
         try:
+            # CRITICAL: Defer immediately to prevent timeout
+            await interaction.response.defer(ephemeral=True)
+            
             guild_id = str(interaction.guild_id)
             
             team_data = await self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
             
             if not team_data:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ You don't lead any team!",
                     ephemeral=True
                 )
@@ -855,7 +885,7 @@ class TeamSystem(commands.Cog):
             
             members = await self.supabase.get_team_members(guild_id, team_data['name'])
             if len(members) >= team_data['max_members']:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Your team is already full!",
                     ephemeral=True
                 )
@@ -892,7 +922,7 @@ class TeamSystem(commands.Cog):
                     ephemeral=True
                 )
             except:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"❌ Error: {str(e)}",
                     ephemeral=True
                 )
@@ -909,13 +939,16 @@ class TeamSystem(commands.Cog):
     ):
         """Manually add a member to team (leader only)"""
         try:
+            # CRITICAL: Defer immediately to prevent timeout
+            await interaction.response.defer(ephemeral=True)
+            
             guild_id = str(interaction.guild_id)
 
             # Get leader's team
             leader_team = await self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
 
             if not leader_team:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ You don't lead any team!",
                     ephemeral=True
                 )
@@ -924,7 +957,7 @@ class TeamSystem(commands.Cog):
             # Check if team is full
             members = await self.supabase.get_team_members(guild_id, leader_team['name'])
             if len(members) >= leader_team['max_members']:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"❌ Your team is full ({leader_team['max_members']} members)!\n"
                     f"Use `/edit_team` to increase max_members first.",
                     ephemeral=True
@@ -939,7 +972,7 @@ class TeamSystem(commands.Cog):
                 # Check if user is already in a team
                 existing_team = await self.supabase.get_user_team(guild_id, user_id)
                 if existing_team:
-                    await interaction.response.send_message(
+                    await interaction.followup.send(
                         f"❌ {user.mention} is already in team **{existing_team['name']}**!",
                         ephemeral=True
                     )
@@ -952,7 +985,7 @@ class TeamSystem(commands.Cog):
                 # Check if this name is already in the team
                 for member in members:
                     if member['user_name'].lower() == member_name.lower():
-                        await interaction.response.send_message(
+                        await interaction.followup.send(
                             f"❌ **{member_name}** is already in your team!",
                             ephemeral=True
                         )
@@ -968,7 +1001,7 @@ class TeamSystem(commands.Cog):
 
             if await self.supabase.add_team_member(member_data):
                 if user:
-                    await interaction.response.send_message(
+                    await interaction.followup.send(
                         f"✅ Added {user.mention} to **{leader_team['name']}**!",
                         ephemeral=True
                     )
@@ -982,21 +1015,21 @@ class TeamSystem(commands.Cog):
                     except:
                         pass
                 else:
-                    await interaction.response.send_message(
+                    await interaction.followup.send(
                         f"✅ Added **{member_name}** (non-Discord member) to **{leader_team['name']}**!",
                         ephemeral=True
                     )
 
                 logger.info(f"{display_name} added to team '{leader_team['name']}' by {interaction.user}")
             else:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Failed to add member. Please try again.",
                     ephemeral=True
                 )
 
         except Exception as e:
             logger.error(f"Error adding member: {e}")
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"❌ Error: {str(e)}",
                 ephemeral=True
             )
@@ -1014,13 +1047,16 @@ class TeamSystem(commands.Cog):
     ):
         """Remove a member from team (leader only)"""
         try:
+            # CRITICAL: Defer immediately to prevent timeout
+            await interaction.response.defer(ephemeral=True)
+            
             guild_id = str(interaction.guild_id)
 
             # Get leader's team
             leader_team = await self.supabase.get_team_by_leader(guild_id, str(interaction.user.id))
 
             if not leader_team:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ You don't lead any team!",
                     ephemeral=True
                 )
@@ -1028,7 +1064,7 @@ class TeamSystem(commands.Cog):
 
             # Need either member_name or user
             if not member_name and not user:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Please provide either a member name or Discord user!",
                     ephemeral=True
                 )
@@ -1048,7 +1084,7 @@ class TeamSystem(commands.Cog):
                         break
 
                 if not member_to_remove:
-                    await interaction.response.send_message(
+                    await interaction.followup.send(
                         f"❌ {user.mention} is not in your team!",
                         ephemeral=True
                     )
@@ -1056,7 +1092,7 @@ class TeamSystem(commands.Cog):
 
                 # Can't remove yourself
                 if user.id == interaction.user.id:
-                    await interaction.response.send_message(
+                    await interaction.followup.send(
                         "❌ You can't remove yourself! Use `/disband_team` to disband the team.",
                         ephemeral=True
                     )
@@ -1069,7 +1105,7 @@ class TeamSystem(commands.Cog):
                         break
 
                 if not member_to_remove:
-                    await interaction.response.send_message(
+                    await interaction.followup.send(
                         f"❌ **{member_name}** is not in your team!",
                         ephemeral=True
                     )
@@ -1077,7 +1113,7 @@ class TeamSystem(commands.Cog):
 
             # Remove member
             if await self.supabase.remove_team_member(guild_id, leader_team['name'], member_to_remove['user_id']):
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"✅ Removed **{member_to_remove['user_name']}** from **{leader_team['name']}**!",
                     ephemeral=True
                 )
@@ -1093,14 +1129,14 @@ class TeamSystem(commands.Cog):
 
                 logger.info(f"{member_to_remove['user_name']} removed from team '{leader_team['name']}' by {interaction.user}")
             else:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Failed to remove member. Please try again.",
                     ephemeral=True
                 )
 
         except Exception as e:
             logger.error(f"Error removing member: {e}")
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"❌ Error: {str(e)}",
                 ephemeral=True
             )
@@ -1110,6 +1146,9 @@ class TeamSystem(commands.Cog):
     async def set_team_channel(self, interaction: discord.Interaction, channel: discord.TextChannel):
         """Set the team announcement channel (Admin only)"""
         try:
+            # CRITICAL: Defer immediately to prevent timeout
+            await interaction.response.defer(ephemeral=True)
+            
             guild_id = str(interaction.guild_id)
 
             # Save to database
@@ -1119,16 +1158,16 @@ class TeamSystem(commands.Cog):
                     description=f"Team announcements will now be sent to {channel.mention}",
                     color=discord.Color.green()
                 )
-                await interaction.response.send_message(embed=embed, ephemeral=True)
+                await interaction.followup.send(embed=embed, ephemeral=True)
                 logger.info(f"Team channel set to {channel.name} by {interaction.user}")
             else:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Failed to set team channel. Please try again.",
                     ephemeral=True
                 )
         except Exception as e:
             logger.error(f"Error setting team channel: {e}")
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"❌ Error: {str(e)}",
                 ephemeral=True
             )
@@ -1160,13 +1199,16 @@ class TeamSystem(commands.Cog):
     ):
         """Announce team creation for an event (Admin only)"""
         try:
+            # CRITICAL: Defer immediately to prevent timeout
+            await interaction.response.defer(ephemeral=True)
+            
             guild_id = str(interaction.guild_id)
 
             # Get team channel
             team_channel_id = await self.supabase.get_setting(f'team_channel_{guild_id}')
 
             if not team_channel_id:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Team channel not configured! Use `/set_team_channel` first.",
                     ephemeral=True
                 )
@@ -1175,7 +1217,7 @@ class TeamSystem(commands.Cog):
             team_channel = interaction.guild.get_channel(int(team_channel_id))
 
             if not team_channel:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Team channel not found! Please reconfigure using `/set_team_channel`.",
                     ephemeral=True
                 )
@@ -1267,8 +1309,6 @@ class TeamSystem(commands.Cog):
             embed.set_footer(text=f"Announced by {interaction.user.display_name}")
 
             # Send announcement
-            await interaction.response.defer(ephemeral=True)
-
             announcement_msg = await team_channel.send(
                 content="@everyone **🚨 TEAM CREATION ANNOUNCEMENT 🚨**",
                 embed=embed
@@ -1289,7 +1329,7 @@ class TeamSystem(commands.Cog):
                     ephemeral=True
                 )
             except:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"❌ Error: {str(e)}",
                     ephemeral=True
                 )
@@ -1313,7 +1353,7 @@ class JoinTeamView(discord.ui.View):
             team_data = self.cog.supabase.get_team_by_name(self.guild_id, self.team_name)
             
             if not team_data:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ This team no longer exists!",
                     ephemeral=True
                 )
@@ -1321,7 +1361,7 @@ class JoinTeamView(discord.ui.View):
             
             user_team = self.cog.supabase.get_user_team(self.guild_id, str(interaction.user.id))
             if user_team:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"❌ You are already in **{user_team['name']}**!\n"
                     f"Use `/leave_team` first if you want to switch teams.",
                     ephemeral=True
@@ -1329,7 +1369,7 @@ class JoinTeamView(discord.ui.View):
                 return
             
             if not team_data.get('recruiting', True):
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ This team is not currently recruiting!",
                     ephemeral=True
                 )
@@ -1337,7 +1377,7 @@ class JoinTeamView(discord.ui.View):
             
             members = self.cog.supabase.get_team_members(self.guild_id, self.team_name)
             if len(members) >= team_data['max_members']:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ This team is full!",
                     ephemeral=True
                 )
@@ -1351,7 +1391,7 @@ class JoinTeamView(discord.ui.View):
             }
             
             if self.cog.supabase.add_team_member(member_data):
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"✅ Welcome to **{self.team_name}**!\n"
                     f"Use `/my_team` to view your team information.",
                     ephemeral=True
@@ -1368,14 +1408,14 @@ class JoinTeamView(discord.ui.View):
                 
                 logger.info(f"{interaction.user} joined team '{self.team_name}'")
             else:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Failed to join team. Please try again.",
                     ephemeral=True
                 )
             
         except Exception as e:
             logger.error(f"Error joining team: {e}")
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"❌ Error: {str(e)}",
                 ephemeral=True
             )

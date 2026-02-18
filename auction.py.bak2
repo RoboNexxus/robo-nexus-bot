@@ -55,15 +55,12 @@ class AuctionSystem(commands.Cog):
     ):
         """Create a new auction"""
         try:
-            # CRITICAL: Defer immediately to prevent timeout
-            await interaction.response.defer(ephemeral=True)
-            
             if starting_price <= 0:
-                await interaction.followup.send("❌ Starting price must be greater than 0!", ephemeral=True)
+                await interaction.response.send_message("❌ Starting price must be greater than 0!", ephemeral=True)
                 return
             
             if buy_now_price and buy_now_price <= starting_price:
-                await interaction.followup.send("❌ Buy now price must be higher than starting price!", ephemeral=True)
+                await interaction.response.send_message("❌ Buy now price must be higher than starting price!", ephemeral=True)
                 return
             
             auction_data = {
@@ -91,14 +88,14 @@ class AuctionSystem(commands.Cog):
             embed.add_field(name="Auction ID", value=f"#{auction_id}", inline=True)
             embed.add_field(name="Starting Price", value=f"₹{starting_price:,.2f}", inline=True)
             
-            await interaction.followup.send(embed=embed)
+            await interaction.response.send_message(embed=embed)
             await self.post_auction_listing(auction_id)
             
             logger.info(f"Auction #{auction_id} created: {product_name}")
             
         except Exception as e:
             logger.error(f"Error creating auction: {e}")
-            await interaction.followup.send("❌ Failed to create auction.", ephemeral=True)
+            await interaction.response.send_message("❌ Failed to create auction.", ephemeral=True)
     
     async def post_auction_listing(self, auction_id: int):
         """Post auction in channel"""
@@ -229,11 +226,11 @@ class AuctionSystem(commands.Cog):
             
             embed.set_footer(text=f"Created: {auction['created_at'].strftime('%Y-%m-%d %H:%M')}")
             
-            await interaction.followup.send(embed=embed)
+            await interaction.response.send_message(embed=embed)
             
         except Exception as e:
             logger.error(f"Error viewing auction: {e}")
-            await interaction.followup.send("❌ Failed to load auction.", ephemeral=True)
+            await interaction.response.send_message("❌ Failed to load auction.", ephemeral=True)
     
     @app_commands.command(name="bid", description="Place a bid on an auction")
     @app_commands.describe(
@@ -252,15 +249,15 @@ class AuctionSystem(commands.Cog):
                 return
             
             if auction['status'] != 'active':
-                await interaction.followup.send("❌ Auction is not active!", ephemeral=True)
+                await interaction.response.send_message("❌ Auction is not active!", ephemeral=True)
                 return
             
             if str(interaction.user.id) == auction['seller_id']:
-                await interaction.followup.send("❌ You cannot bid on your own auction!", ephemeral=True)
+                await interaction.response.send_message("❌ You cannot bid on your own auction!", ephemeral=True)
                 return
             
             if amount <= auction['current_price']:
-                await interaction.followup.send(
+                await interaction.response.send_message(
                     f"❌ Bid must be higher than ₹{auction['current_price']:,.2f}!",
                     ephemeral=True
                 )
@@ -282,14 +279,14 @@ class AuctionSystem(commands.Cog):
                 embed.add_field(name="Auction ID", value=f"#{auction_id}", inline=True)
                 embed.add_field(name="Your Bid", value=f"₹{amount:,.2f}", inline=True)
                 
-                await interaction.followup.send(embed=embed)
+                await interaction.response.send_message(embed=embed)
                 logger.info(f"Bid placed: ₹{amount} on auction #{auction_id}")
             else:
-                await interaction.followup.send("❌ Failed to place bid.", ephemeral=True)
+                await interaction.response.send_message("❌ Failed to place bid.", ephemeral=True)
             
         except Exception as e:
             logger.error(f"Error placing bid: {e}")
-            await interaction.followup.send("❌ Failed to place bid.", ephemeral=True)
+            await interaction.response.send_message("❌ Failed to place bid.", ephemeral=True)
     
     @app_commands.command(name="buy_now", description="Instantly buy an auction item")
     @app_commands.describe(auction_id="The auction ID")
@@ -305,15 +302,15 @@ class AuctionSystem(commands.Cog):
                 return
             
             if auction['status'] != 'active':
-                await interaction.followup.send("❌ Auction is not active!", ephemeral=True)
+                await interaction.response.send_message("❌ Auction is not active!", ephemeral=True)
                 return
             
             if not auction['buy_now_price']:
-                await interaction.followup.send("❌ No Buy Now option available.", ephemeral=True)
+                await interaction.response.send_message("❌ No Buy Now option available.", ephemeral=True)
                 return
             
             if str(interaction.user.id) == auction['seller_id']:
-                await interaction.followup.send("❌ You can't buy your own item!", ephemeral=True)
+                await interaction.response.send_message("❌ You can't buy your own item!", ephemeral=True)
                 return
             
             success = await self.db.place_bid(
@@ -338,28 +335,28 @@ class AuctionSystem(commands.Cog):
                         )
                         
                         if update_response.status_code == 200:
-                            await interaction.followup.send(
+                            await interaction.response.send_message(
                                 f"🎉 You bought **{auction['product_name']}** for ₹{auction['buy_now_price']:,.2f}!"
                             )
                             logger.info(f"Buy now: Auction #{auction_id} sold for ₹{auction['buy_now_price']}")
                         else:
                             logger.error(f"Failed to update auction status: {update_response.status_code}")
-                            await interaction.followup.send(
+                            await interaction.response.send_message(
                                 f"🎉 You bought **{auction['product_name']}** for ₹{auction['buy_now_price']:,.2f}! (Status update pending)"
                             )
                     else:
-                        await interaction.followup.send("❌ Auction not found after purchase.", ephemeral=True)
+                        await interaction.response.send_message("❌ Auction not found after purchase.", ephemeral=True)
                 except Exception as e:
                     logger.error(f"Error updating auction status: {e}")
-                    await interaction.followup.send(
+                    await interaction.response.send_message(
                         f"🎉 Purchase successful, but there was an issue updating the auction status."
                     )
             else:
-                await interaction.followup.send("❌ Failed to complete purchase.", ephemeral=True)
+                await interaction.response.send_message("❌ Failed to complete purchase.", ephemeral=True)
                 
         except Exception as e:
             logger.error(f"Error in buy_now: {e}")
-            await interaction.followup.send("❌ Error completing purchase.", ephemeral=True)
+            await interaction.response.send_message("❌ Error completing purchase.", ephemeral=True)
     
     @app_commands.command(name="my_auctions", description="View your active auctions")
     async def my_auctions(self, interaction: discord.Interaction):
@@ -377,7 +374,7 @@ class AuctionSystem(commands.Cog):
                     description="You don't have any active auctions.",
                     color=0x808080
                 )
-                await interaction.followup.send(embed=embed, ephemeral=True)
+                await interaction.response.send_message(embed=embed, ephemeral=True)
                 return
             
             embed = discord.Embed(
@@ -393,11 +390,11 @@ class AuctionSystem(commands.Cog):
                     inline=False
                 )
             
-            await interaction.followup.send(embed=embed, ephemeral=True)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
             
         except Exception as e:
             logger.error(f"Error getting user auctions: {e}")
-            await interaction.followup.send("❌ Failed to load your auctions.", ephemeral=True)
+            await interaction.response.send_message("❌ Failed to load your auctions.", ephemeral=True)
     
     @app_commands.command(name="my_bids", description="View your active bids")
     async def my_bids(self, interaction: discord.Interaction):
@@ -426,7 +423,7 @@ class AuctionSystem(commands.Cog):
                     description="You haven't placed any bids yet!",
                     color=0x808080
                 )
-                await interaction.followup.send(embed=embed, ephemeral=True)
+                await interaction.response.send_message(embed=embed, ephemeral=True)
                 return
             
             embed = discord.Embed(
@@ -442,11 +439,11 @@ class AuctionSystem(commands.Cog):
                     inline=True
                 )
             
-            await interaction.followup.send(embed=embed, ephemeral=True)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
             
         except Exception as e:
             logger.error(f"Error in my_bids: {e}")
-            await interaction.followup.send("❌ Error loading your bids.", ephemeral=True)
+            await interaction.response.send_message("❌ Error loading your bids.", ephemeral=True)
     
     @app_commands.command(name="set_auction_channel", description="[ADMIN] Set the auction channel")
     @app_commands.describe(channel="The channel for auctions")
@@ -465,7 +462,7 @@ class AuctionSystem(commands.Cog):
             description=f"Auctions will be posted in {channel.mention}",
             color=0x00ff00
         )
-        await interaction.followup.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
         logger.info(f"Auction channel set to {channel.name}")
 
 async def setup(bot):

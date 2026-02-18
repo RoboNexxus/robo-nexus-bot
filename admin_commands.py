@@ -490,14 +490,15 @@ class AdminCommands(commands.Cog):
     async def clear_duplicate_commands(self, interaction: discord.Interaction):
         """Clear all slash commands and resync to remove duplicates"""
         try:
+            # CRITICAL: Defer immediately to prevent timeout
+            await interaction.response.defer(ephemeral=True)
+            
             if not interaction.user.guild_permissions.administrator:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ You need Administrator permissions to use this command.",
                     ephemeral=True
                 )
                 return
-
-            await interaction.response.defer(ephemeral=True)
 
             # Clear both global and guild commands
             guild = discord.Object(id=interaction.guild_id)

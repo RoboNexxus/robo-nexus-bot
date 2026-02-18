@@ -1099,9 +1099,11 @@ class WelcomeSystem(commands.Cog):
     @app_commands.default_permissions(administrator=True)
     async def welcome_config(self, interaction: discord.Interaction):
         """Show welcome system configuration"""
+        # CRITICAL: Defer immediately to prevent timeout
+        await interaction.response.defer(ephemeral=True)
         
         if not interaction.user.guild_permissions.administrator:
-            await interaction.response.send_message("❌ Administrator permissions required.", ephemeral=True)
+            await interaction.followup.send("❌ Administrator permissions required.", ephemeral=True)
             return
         
         embed = discord.Embed(
@@ -1145,7 +1147,7 @@ class WelcomeSystem(commands.Cog):
             inline=False
         )
         
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
 
     @app_commands.command(name="birthday_collect", description="Collect birthday data in self-roles channel")
     @app_commands.describe(date="Your birthday (MM-DD format, e.g., 03-15)")
