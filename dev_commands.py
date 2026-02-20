@@ -27,6 +27,13 @@ class DevCommands(commands.Cog):
         
         # Start auto-monitoring
         self.auto_monitor.start()
+        
+        logger.info("DevCommands cog loaded - Fully automated monitoring active!")
+    
+    def cog_unload(self):
+        """Clean up when cog is unloaded"""
+        self.auto_monitor.cancel()
+        logger.info("DevCommands cog unloaded - monitoring stopped")
     
     def load_deploy_info(self) -> dict:
         """Load deployment info with auto-detection"""

@@ -141,6 +141,23 @@ class TeamSystem(commands.Cog):
             # CRITICAL: Defer immediately to prevent timeout
             await interaction.response.defer(ephemeral=True)
             
+            # Validate team name (prevent SQL injection and special characters)
+            if not name or len(name) > 50:
+                await interaction.followup.send(
+                    "❌ Team name must be between 1 and 50 characters!",
+                    ephemeral=True
+                )
+                return
+            
+            # Only allow alphanumeric, spaces, hyphens, and underscores
+            import re
+            if not re.match(r'^[a-zA-Z0-9\s\-_]+$', name):
+                await interaction.followup.send(
+                    "❌ Team name can only contain letters, numbers, spaces, hyphens, and underscores!",
+                    ephemeral=True
+                )
+                return
+            
             guild_id = str(interaction.guild_id)
             
             # Check if team name already exists

@@ -39,6 +39,14 @@ class Analytics(commands.Cog):
         
         logger.info("Analytics system initialized")
     
+    def cog_unload(self):
+        """Clean up when cog is unloaded"""
+        self.save_analytics_task.cancel()
+        self.performance_monitor.cancel()
+        # Save analytics one last time before unloading
+        self.save_analytics()
+        logger.info("Analytics cog unloaded - data saved")
+    
     def load_analytics(self):
         """Load analytics data from file"""
         try:
@@ -56,22 +64,36 @@ class Analytics(commands.Cog):
                     for date, stats in data.get("daily_stats", {}).items():
                         self.daily_stats[date].update(stats)
                     
+                    # FIX: Load error log from persisted data
+                    error_log_data = data.get("error_log", [])
+                    for error in error_log_data:
+                        self.error_log.append(error)
+                    
                     logger.info("Analytics data loaded successfully")
         except Exception as e:
             logger.error(f"Error loading analytics: {e}")
     
     def save_analytics(self):
-        """Save analytics data to file"""
+        """Save analytics data to file atomically"""
         try:
+            # FIX: Also save error log to persist errors
             data = {
                 "command_usage": dict(self.command_usage),
                 "user_activity": dict(self.user_activity),
                 "daily_stats": dict(self.daily_stats),
+                "error_log": list(self.error_log),  # Persist error log
                 "last_updated": datetime.now().isoformat()
             }
             
-            with open("analytics.json", 'w') as f:
+            # Write to temp file first, then rename (atomic operation)
+            import tempfile
+            with tempfile.NamedTemporaryFile('w', delete=False, dir='.', prefix='analytics_', suffix='.tmp') as f:
                 json.dump(data, f, indent=2)
+                temp_path = f.name
+            
+            # Atomic rename
+            import os
+            os.replace(temp_path, "analytics.json")
                 
         except Exception as e:
             logger.error(f"Error saving analytics: {e}")

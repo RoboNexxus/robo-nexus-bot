@@ -38,6 +38,25 @@ class StatsChannel(commands.Cog):
         self.ga_credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
         self.ga_credentials_json = os.getenv('GOOGLE_CREDENTIALS_JSON')  # Direct JSON string
         
+        # FIX: Validate GA credentials at startup
+        if not self.ga_property_id:
+            logger.warning("GA_PROPERTY_ID not set - Google Analytics features will be disabled")
+        
+        if not self.ga_credentials_json and not self.ga_credentials_path:
+            logger.warning("No Google Analytics credentials found - GA features will be disabled")
+        elif self.ga_credentials_json:
+            try:
+                # Validate JSON format
+                json.loads(self.ga_credentials_json)
+                logger.info("Google Analytics credentials validated (JSON string)")
+            except json.JSONDecodeError:
+                logger.error("GOOGLE_CREDENTIALS_JSON is not valid JSON - GA features will be disabled")
+        elif self.ga_credentials_path:
+            if os.path.exists(self.ga_credentials_path):
+                logger.info(f"Google Analytics credentials found at {self.ga_credentials_path}")
+            else:
+                logger.error(f"GOOGLE_APPLICATION_CREDENTIALS path does not exist: {self.ga_credentials_path}")
+        
         # GitHub Configuration
         self.github_org_username = "robonexxusaisg46"  # Organization GitHub profile
         
@@ -51,6 +70,10 @@ class StatsChannel(commands.Cog):
             "last_updated": None
         }
         
+        # Cache GA client to avoid recreating on every call
+        self._ga_client = None
+        self._ga_client_created_at = None
+        
         # Start the update task
         self.update_stats_channels.start()
         
@@ -59,42 +82,34 @@ class StatsChannel(commands.Cog):
     def cog_unload(self):
         """Clean up when cog is unloaded"""
         self.update_stats_channels.cancel()
-    
-    async def get_or_create_stats_category(self, guild: discord.Guild) -> Optional[discord.CategoryChannel]:
-        """Get or create the STATS category"""
-        try:
-            # Look for existing STATS category
-            for category in guild.categories:
-                if category.name.upper() == self.stats_category_name:
-                    return category
-            
-            # Create new STATS category if it doesn't exist
-            category = await guild.create_category(
-                name=self.stats_category_name,
-                reason="Stats display category for Robo Nexus"
-            )
-            logger.info(f"Created STATS category in guild {guild.name}")
-            return category
-            
-        except Exception as e:
-            logger.error(f"Error getting/creating STATS category: {e}")
-            return None
+        logger.info("Stats Channel cog unloaded - update task stopped")
     
     def get_ga_client(self):
         """
         Get Google Analytics client with credentials from Replit Secrets or file
+        Cached to avoid recreating on every call
         """
         try:
+            # Return cached client if it exists and is less than 1 hour old
+            if self._ga_client and self._ga_client_created_at:
+                age = datetime.now() - self._ga_client_created_at
+                if age.total_seconds() < 3600:  # 1 hour
+                    return self._ga_client
+            
             # Option 1: Direct JSON string from Replit Secret (RECOMMENDED)
             if self.ga_credentials_json:
                 credentials_info = json.loads(self.ga_credentials_json)
                 credentials = service_account.Credentials.from_service_account_info(credentials_info)
-                return BetaAnalyticsDataClient(credentials=credentials)
+                self._ga_client = BetaAnalyticsDataClient(credentials=credentials)
+                self._ga_client_created_at = datetime.now()
+                return self._ga_client
             
             # Option 2: File path (fallback)
             elif self.ga_credentials_path and os.path.exists(self.ga_credentials_path):
                 credentials = service_account.Credentials.from_service_account_file(self.ga_credentials_path)
-                return BetaAnalyticsDataClient(credentials=credentials)
+                self._ga_client = BetaAnalyticsDataClient(credentials=credentials)
+                self._ga_client_created_at = datetime.now()
+                return self._ga_client
             
             else:
                 logger.error("No Google Analytics credentials found")

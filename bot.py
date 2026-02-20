@@ -47,6 +47,36 @@ class RoboNexusBirthdayBot(commands.Bot):
             # Database is already initialized in postgres_db.py
             logger.info("Database connection ready")
             
+            # ============================================================================
+            # COG LOADING ORDER DOCUMENTATION
+            # ============================================================================
+            # The cogs are loaded in the order defined below. This sequential order is
+            # INTENTIONAL and DEPENDENCY-FREE. Each cog is designed to be independent
+            # and does not rely on other cogs being loaded first.
+            #
+            # Current Load Order (by design):
+            #   1. commands          - Basic bot commands
+            #   2. admin_commands    - Administrative functions
+            #   3. help_commands     - Help system
+            #   4. dev_commands      - Developer utilities
+            #   5. github_integration - GitHub webhook integration
+            #   6. analytics         - Usage analytics
+            #   7. auction           - Auction system
+            #   8. welcome_system    - User verification and welcome
+            #   9. stats_channel     - Statistics display
+            #   10. team_system      - Team management
+            #
+            # Dependency Analysis:
+            # - All cogs use shared utilities (async_supabase_wrapper, postgres_db)
+            # - No cog imports or depends on another cog's functionality
+            # - Module-level imports are safe (no circular dependencies detected)
+            # - Order can be changed without breaking functionality
+            #
+            # TODO: If future cogs develop interdependencies, implement a dependency
+            # graph system to automatically determine optimal load order. For now,
+            # the simple sequential approach is sufficient and maintainable.
+            # ============================================================================
+            
             # Define expected cogs for validation
             expected_cogs = [
                 'commands',
@@ -67,14 +97,16 @@ class RoboNexusBirthdayBot(commands.Bot):
             
             for cog_name in expected_cogs:
                 try:
-                    logger.info(f"Loading cog: {cog_name}")
+                    # Log load attempt with order information
+                    load_order = len(loaded_cogs) + 1
+                    logger.info(f"Loading cog [{load_order}/{len(expected_cogs)}]: {cog_name}")
                     await self.load_extension(cog_name)
                     
                     # Verify cog loaded successfully
                     # Note: Cog class names may differ from module names
                     # We check if the extension is in the loaded extensions
                     if cog_name in self.extensions:
-                        logger.info(f"Successfully loaded cog: {cog_name}")
+                        logger.info(f"✅ Successfully loaded cog [{load_order}/{len(expected_cogs)}]: {cog_name}")
                         loaded_cogs.append(cog_name)
                     else:
                         logger.error(f"Cog {cog_name} failed to load - not found in extensions")
@@ -105,24 +137,62 @@ class RoboNexusBirthdayBot(commands.Bot):
             
             # Add comprehensive logging for diagnostics
             logger.info(f"Commands in tree: {len(all_commands)} total")
+            logger.info(f"Unique commands: {len(set(command_names))}")
+            
+            # Log all command names for debugging
             for cmd in all_commands:
                 logger.info(f"  - {cmd.name}")
             
             # Check for duplicate commands in the tree
             if len(command_names) != len(set(command_names)):
                 # Find duplicates
-                seen = set()
-                duplicates = set()
+                seen = {}
+                duplicates = {}
                 for name in command_names:
                     if name in seen:
-                        duplicates.add(name)
-                    seen.add(name)
+                        if name not in duplicates:
+                            duplicates[name] = 2
+                        else:
+                            duplicates[name] += 1
+                    else:
+                        seen[name] = 1
                 
-                error_msg = f"Duplicate commands detected in tree: {', '.join(duplicates)}"
-                logger.error(error_msg)
-                raise RuntimeError(error_msg)
-            
-            logger.info("Command tree validation passed - no duplicates detected")
+                logger.error(f"❌ Duplicate commands detected in tree:")
+                for cmd, count in sorted(duplicates.items()):
+                    logger.error(f"  - {cmd}: appears {count} times")
+                
+                # CRITICAL FIX: Clear ALL commands and force re-sync
+                logger.warning("⚠️ Clearing command tree to remove duplicates...")
+                
+                # Clear commands for the guild
+                if Config.GUILD_ID:
+                    guild = discord.Object(id=int(Config.GUILD_ID))
+                    self.tree.clear_commands(guild=guild)
+                else:
+                    self.tree.clear_commands(guild=None)
+                
+                # Copy commands from cogs back to tree
+                logger.info("📋 Re-registering commands from cogs...")
+                for cog in self.cogs.values():
+                    for command in cog.get_app_commands():
+                        self.tree.add_command(command)
+                
+                # Get commands again after cleanup
+                all_commands = list(self.tree.get_commands())
+                command_names = [cmd.name for cmd in all_commands]
+                logger.info(f"✅ After cleanup: {len(all_commands)} commands ({len(set(command_names))} unique)")
+                
+                # Verify no duplicates remain
+                if len(command_names) != len(set(command_names)):
+                    logger.error("❌ Duplicates still exist after cleanup! This should not happen.")
+                    # Log which commands are still duplicated
+                    seen2 = set()
+                    for name in command_names:
+                        if name in seen2:
+                            logger.error(f"  - Still duplicated: {name}")
+                        seen2.add(name)
+            else:
+                logger.info("✅ Command tree validation passed - no duplicates detected")
             
             # Sync slash commands
             if Config.GUILD_ID:
@@ -233,6 +303,17 @@ class RoboNexusBirthdayBot(commands.Bot):
             
             if birthday_channel_id:
                 birthday_channel = guild.get_channel(birthday_channel_id)
+                
+                # Verify channel still exists and bot has permissions
+                if birthday_channel:
+                    permissions = birthday_channel.permissions_for(guild.me)
+                    if not permissions.send_messages:
+                        logger.error(f"Bot lacks send_messages permission in birthday channel {birthday_channel.name}")
+                        return
+                else:
+                    # FIX: Channel was deleted, log and return
+                    logger.warning(f"Birthday channel {birthday_channel_id} no longer exists in guild {guild.name}")
+                    return
             
             # If no configured channel or channel not found, log warning
             if not birthday_channel:
@@ -244,35 +325,50 @@ class RoboNexusBirthdayBot(commands.Bot):
                 try:
                     user_id = birthday_info['user_id']
                     
-                    # Get the user from the guild
-                    try:
-                        member = await guild.fetch_member(user_id)
-                    except:
-                        member = guild.get_member(user_id)
+                    # Get the user from the guild (use cache first, then fetch)
+                    member = guild.get_member(user_id)
+                    if not member:
+                        try:
+                            member = await guild.fetch_member(user_id)
+                        except discord.NotFound:
+                            logger.warning(f"User {user_id} not found in guild {guild.name}")
+                            continue
+                        except discord.HTTPException as e:
+                            logger.error(f"HTTP error fetching member {user_id}: {e}")
+                            continue
+                        except Exception as e:
+                            # FIX: Catch all exceptions for member fetch
+                            logger.error(f"Unexpected error fetching member {user_id}: {e}", exc_info=True)
+                            continue
                     
                     if member:
                         # Create birthday message with @everyone mention
-                        # Note: @everyone as string won't ping, but it's visible. 
-                        # To actually ping everyone, the bot needs "Mention Everyone" permission
                         birthday_message = f"@everyone\n\n🎉🎂 **HAPPY BIRTHDAY {member.mention}!** 🎂🎉\n\nEveryone wish them a fantastic day! 🎈🎁🥳"
                         
                         # Send to configured birthday channel with allowed_mentions to enable @everyone
-                        await birthday_channel.send(
-                            birthday_message,
-                            allowed_mentions=discord.AllowedMentions(everyone=True)
-                        )
-                        logger.info(f"Birthday message sent for {member.display_name} in {guild.name} to channel {birthday_channel.name}")
+                        try:
+                            await birthday_channel.send(
+                                birthday_message,
+                                allowed_mentions=discord.AllowedMentions(everyone=True)
+                            )
+                            logger.info(f"Birthday message sent for {member.display_name} in {guild.name}")
+                        except discord.Forbidden:
+                            logger.error(f"Bot lacks permission to send messages in {birthday_channel.name}")
+                            return
+                        except discord.HTTPException as e:
+                            logger.error(f"HTTP error sending birthday message: {e}")
+                        except Exception as e:
+                            # FIX: Catch all exceptions for message send
+                            logger.error(f"Unexpected error sending birthday message: {e}", exc_info=True)
                         
                         # Add a small delay between messages to avoid rate limits
                         await asyncio.sleep(1)
-                    else:
-                        logger.warning(f"User {user_id} not found in guild {guild.name}")
                         
                 except Exception as e:
-                    logger.error(f"Error sending birthday message for user {user_id}: {e}")
+                    logger.error(f"Error sending birthday message for user {user_id}: {e}", exc_info=True)
             
         except Exception as e:
-            logger.error(f"Error sending birthday messages to guild {guild.name}: {e}")
+            logger.error(f"Error sending birthday messages to guild {guild.name}: {e}", exc_info=True)
     
     @daily_birthday_check.before_loop
     async def before_birthday_check(self):

@@ -1,4 +1,4 @@
-from async_supabase_wrapper import get_async_supabase
+from async_supabase_wrapper import get_async_supabase  # Safe: no reverse dependency on welcome_system
 """
 Welcome System for Robo Nexus Bot
 Handles new member onboarding with name, class, email, and social links collection
@@ -12,7 +12,6 @@ import re
 import asyncio
 from typing import Optional, Dict
 import json
-# from async_supabase_wrapper import get_async_supabase
 
 logger = logging.getLogger(__name__)
 
@@ -328,8 +327,13 @@ class WelcomeSystem(commands.Cog):
             embed.set_footer(text="🔒 Currently you only have access to #self-roles channel")
             embed.set_thumbnail(url=member.guild.icon.url if member.guild.icon else None)
             
-            await member.send(embed=embed)
-            logger.info(f"Sent welcome DM to {member.display_name}")
+            # FIX: Add timeout to member.send() to prevent hanging
+            try:
+                await asyncio.wait_for(member.send(embed=embed), timeout=10.0)
+                logger.info(f"Sent welcome DM to {member.display_name}")
+            except asyncio.TimeoutError:
+                logger.warning(f"Timeout sending DM to {member.display_name}")
+                await self.send_welcome_in_channel(member)
             
         except discord.Forbidden:
             logger.warning(f"Could not send DM to {member.display_name} - DMs disabled")
@@ -340,13 +344,8 @@ class WelcomeSystem(commands.Cog):
         """Send welcome message in self-roles channel"""
         try:
             self_roles_channel_id = await self.get_self_roles_channel_id()
-            # Add fallback for welcome channel
-            if not self_roles_channel_id:
-                # Fallback to hardcoded ID for SSL connection issues
-                self_roles_channel_id = 1460556204383273148
-                logger.info("Using fallback self-roles channel ID due to database connection issue")
             
-            # Add fallback for welcome channel
+            # FIX: Remove hardcoded fallback - let it fail gracefully
             if not self_roles_channel_id:
                 logger.warning("Self-roles channel not configured, cannot send welcome message")
                 return
@@ -920,7 +919,7 @@ class WelcomeSystem(commands.Cog):
                     profile_data["birthday"] = profile_data["birthday"].strftime('%m-%d')
                 
                 # Save profile with error handling
-                profile_saved = self.save_user_profile(member.id, profile_data)
+                profile_saved = await self.save_user_profile(member.id, profile_data)
                 
                 if not profile_saved:
                     logger.error(f"CRITICAL: Failed to save user profile for {member.display_name} ({member.id})")
@@ -1063,7 +1062,7 @@ class WelcomeSystem(commands.Cog):
             await interaction.response.send_message("❌ Administrator permissions required.", ephemeral=True)
             return
         
-        self.set_welcome_channel_id(channel.id)
+        await self.set_welcome_channel_id(channel.id)
         
         embed = discord.Embed(
             title="✅ Welcome Channel Set",
@@ -1084,7 +1083,7 @@ class WelcomeSystem(commands.Cog):
             await interaction.response.send_message("❌ Administrator permissions required.", ephemeral=True)
             return
         
-        self.set_self_roles_channel_id(channel.id)
+        await self.set_self_roles_channel_id(channel.id)
         
         embed = discord.Embed(
             title="✅ Self-Roles Channel Set",
@@ -1804,7 +1803,7 @@ class WelcomeSystem(commands.Cog):
                 "verification_stage": "complete"
             }
             
-            self.save_user_profile(user.id, profile_data)
+            await self.save_user_profile(user.id, profile_data)
             
             # Remove from pending if exists
             if user.id in self.pending_users:

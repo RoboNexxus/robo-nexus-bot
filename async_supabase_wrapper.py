@@ -18,10 +18,24 @@ class AsyncSupabaseWrapper:
     
     # Settings methods
     async def get_setting(self, key: str) -> Optional[str]:
-        return await asyncio.to_thread(self._sync_api.get_setting, key)
+        try:
+            return await asyncio.wait_for(
+                asyncio.to_thread(self._sync_api.get_setting, key),
+                timeout=15.0  # 15 second timeout for thread pool
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"Timeout getting setting {key}")
+            return None
     
     async def set_setting(self, key: str, value: str) -> bool:
-        return await asyncio.to_thread(self._sync_api.set_setting, key, value)
+        try:
+            return await asyncio.wait_for(
+                asyncio.to_thread(self._sync_api.set_setting, key, value),
+                timeout=15.0
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"Timeout setting {key}")
+            return False
     
     # Auction methods
     async def get_all_auctions(self, status: str = 'active') -> List[Dict[str, Any]]:
@@ -120,6 +134,40 @@ class AsyncSupabaseWrapper:
     
     async def get_all_competitions(self, guild_id: str) -> List[Dict[str, Any]]:
         return await asyncio.to_thread(self._sync_api.get_all_competitions, guild_id)
+
+
+    async def __aenter__(self):
+        """
+        Async context manager entry.
+
+        Allows AsyncSupabaseWrapper to be used with 'async with' statement:
+            async with get_async_supabase() as db:
+                await db.get_user_profile(user_id)
+
+        Returns:
+            self: The AsyncSupabaseWrapper instance
+        """
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """
+        Async context manager exit.
+
+        Currently a no-op as the singleton pattern doesn't require cleanup.
+        Future implementations could close connection pools or release resources here.
+
+        Args:
+            exc_type: Exception type if an exception was raised
+            exc_val: Exception value if an exception was raised
+            exc_tb: Exception traceback if an exception was raised
+
+        Returns:
+            False: Don't suppress exceptions
+        """
+        # Currently no cleanup needed as we use singleton pattern
+        # Future: could close connection pools here
+        return False
+
 
 
 # Global instance

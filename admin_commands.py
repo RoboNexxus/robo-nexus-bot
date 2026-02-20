@@ -35,6 +35,16 @@ class AdminCommands(commands.Cog):
                 await interaction.followup.send(embed=embed)
                 return
             
+            # FIX: Validate channel exists and is accessible
+            if not channel:
+                embed = discord.Embed(
+                    title="❌ Invalid Channel",
+                    description="The specified channel does not exist or is not accessible.",
+                    color=discord.Color.red()
+                )
+                await interaction.followup.send(embed=embed)
+                return
+            
             # Check if bot can send messages to the channel
             if not channel.permissions_for(interaction.guild.me).send_messages:
                 embed = discord.Embed(
@@ -78,7 +88,7 @@ class AdminCommands(commands.Cog):
             await interaction.followup.send(embed=embed)
             
         except Exception as e:
-            logger.error(f"Error in set_birthday_channel command: {e}")
+            logger.error(f"Error in set_birthday_channel command: {e}", exc_info=True)
             
             error_embed = discord.Embed(
                 title="❌ Something went wrong",
@@ -401,13 +411,12 @@ class AdminCommands(commands.Cog):
             
             await interaction.response.defer()
             
-            # Get today's birthdays
-            from database import get_all_birthdays
+            # FIX: Use correct async method from database
             from datetime import datetime
             
             today = datetime.now().strftime("%m-%d")
-            all_birthdays = await get_all_birthdays()
-            todays_birthdays = [(b['user_id'], b['birthday']) for b in all_birthdays if b['birthday'] == today]
+            # Use the async database method correctly
+            todays_birthdays = await self.db.get_birthdays_today(today)
             
             if not todays_birthdays:
                 embed = discord.Embed(
@@ -440,13 +449,14 @@ class AdminCommands(commands.Cog):
             
             # Send birthday messages
             sent_count = 0
-            for user_id, birthday_date in todays_birthdays:
+            for birthday_info in todays_birthdays:
                 try:
-                    member = await interaction.guild.fetch_member(int(user_id))
+                    user_id = int(birthday_info['user_id'])
+                    member = await interaction.guild.fetch_member(user_id)
                     if member:
                         # Send to birthday channel with @everyone
                         message = f"@everyone\n\n🎉🎂 **HAPPY BIRTHDAY {member.mention}!** 🎂🎉\n\nEveryone wish them a fantastic day! 🎈🎁🥳"
-                        await channel.send(message)
+                        await channel.send(message, allowed_mentions=discord.AllowedMentions(everyone=True))
                         sent_count += 1
                         
                         # Try to send to announcements channel too
@@ -454,7 +464,7 @@ class AdminCommands(commands.Cog):
                             if 'announcement' in ann_channel.name.lower() and ann_channel.id != channel.id:
                                 try:
                                     ann_msg = f"@everyone\n\n🎂 **Birthday Alert!** 🎂\n\nToday is **{member.display_name}**'s birthday! Head over to {channel.mention} to wish them! 🎉"
-                                    await ann_channel.send(ann_msg)
+                                    await ann_channel.send(ann_msg, allowed_mentions=discord.AllowedMentions(everyone=True))
                                 except:
                                     pass
                                 break
@@ -553,30 +563,10 @@ class AdminCommands(commands.Cog):
             
             # Clear commands from Discord
             self.bot.tree.clear_commands(guild=guild)
-            await self.bot.tree.sync(guild=guild)
             
-            # Reload all cogs to repopulate the command tree
-            cog_names = [
-                'team_system',
-                'birthday_commands', 
-                'admin_commands',
-                'dev_commands',
-                'auction_commands',
-                'welcome_system',
-                'stats_channel',
-                'github_integration'
-            ]
-            
-            reload_errors = []
-            for cog_name in cog_names:
-                try:
-                    # Reload the cog (unload then load)
-                    await self.bot.reload_extension(cog_name)
-                except Exception as e:
-                    logger.error(f"Error reloading cog {cog_name}: {e}")
-                    reload_errors.append(f"{cog_name}: {str(e)[:50]}")
-            
-            # Sync the repopulated tree
+            # Sync the cleared tree (commands auto-repopulate from loaded cogs)
+            # No need to reload cogs - the command tree automatically includes
+            # all commands from currently loaded cogs after sync
             synced = await self.bot.tree.sync(guild=guild)
             
             # Verify no duplicates remain
@@ -606,13 +596,6 @@ class AdminCommands(commands.Cog):
                 embed.add_field(
                     name="⚠️ Warning",
                     value=f"Some duplicates may still exist: {', '.join(final_duplicates)}",
-                    inline=False
-                )
-            
-            if reload_errors:
-                embed.add_field(
-                    name="⚠️ Cog Reload Errors",
-                    value="\n".join(reload_errors[:5]),  # Limit to 5 errors
                     inline=False
                 )
             

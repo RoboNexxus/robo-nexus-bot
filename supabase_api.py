@@ -43,14 +43,9 @@ class SupabaseAPI:
         except Exception as e:
             logger.error(f"Error getting setting {key}: {e}")
         
-        # Fallback values
-        fallbacks = {
-            "welcome_channel_id": "1460866844285206661",
-            "self_roles_channel_id": "1460556204383273148",
-            "auction_channel_id": "1458741960134230091",
-            "birthday_channel_id": "1457389004251992317"
-        }
-        return fallbacks.get(key)
+        # Return None instead of hardcoded fallbacks
+        # Let the calling code handle missing settings
+        return None
     
     def set_setting(self, key: str, value: str) -> bool:
         try:
@@ -103,12 +98,15 @@ class SupabaseAPI:
         try:
             response = requests.get(
                 f"{self.url}/rest/v1/auctions?id=eq.{auction_id}",
-                headers=self.headers
+                headers=self.headers,
+                timeout=10  # Added timeout
             )
             
             if response.status_code == 200:
                 data = response.json()
                 return data[0] if data else None
+        except requests.exceptions.Timeout:
+            logger.error(f"Timeout getting auction {auction_id}")
         except Exception as e:
             logger.error(f"Error getting auction {auction_id}: {e}")
         
@@ -300,12 +298,15 @@ class SupabaseAPI:
         try:
             response = requests.get(
                 f"{self.url}/rest/v1/birthdays?user_id=eq.{user_id}",
-                headers=self.headers
+                headers=self.headers,
+                timeout=10  # Added timeout
             )
             
             if response.status_code == 200:
                 data = response.json()
                 return data[0]['birthday'] if data else None
+        except requests.exceptions.Timeout:
+            logger.error(f"Timeout getting birthday for {user_id}")
         except Exception as e:
             logger.error(f"Error getting birthday for {user_id}: {e}")
         
@@ -315,11 +316,14 @@ class SupabaseAPI:
         try:
             response = requests.get(
                 f"{self.url}/rest/v1/birthdays?birthday=eq.{today_str}",
-                headers=self.headers
+                headers=self.headers,
+                timeout=10  # Added timeout
             )
             
             if response.status_code == 200:
                 return response.json()
+        except requests.exceptions.Timeout:
+            logger.error("Timeout getting today's birthdays")
         except Exception as e:
             logger.error(f"Error getting today's birthdays: {e}")
         
@@ -329,11 +333,14 @@ class SupabaseAPI:
         try:
             response = requests.get(
                 f"{self.url}/rest/v1/birthdays",
-                headers=self.headers
+                headers=self.headers,
+                timeout=10  # Added timeout
             )
             
             if response.status_code == 200:
                 return response.json()
+        except requests.exceptions.Timeout:
+            logger.error("Timeout getting all birthdays")
         except Exception as e:
             logger.error(f"Error getting all birthdays: {e}")
         
@@ -343,10 +350,14 @@ class SupabaseAPI:
         try:
             response = requests.delete(
                 f"{self.url}/rest/v1/birthdays?user_id=eq.{user_id}",
-                headers=self.headers
+                headers=self.headers,
+                timeout=10  # Added timeout
             )
             
             return response.status_code == 204
+        except requests.exceptions.Timeout:
+            logger.error(f"Timeout removing birthday for {user_id}")
+            return False
         except Exception as e:
             logger.error(f"Error removing birthday for {user_id}: {e}")
             return False
