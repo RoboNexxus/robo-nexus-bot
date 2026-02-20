@@ -1,123 +1,128 @@
-# Replit Setup Guide (Recovery Mode)
+# Replit Setup Checklist
 
-## Quick Start Commands
+## Required Secrets in Replit
 
-### 1. Install Dependencies
-```bash
-pip install -r requirements.txt
+Go to your Replit project → Click the lock icon (🔒 Secrets) → Add these:
+
+### 1. Discord Configuration
 ```
-
-### 2. Set Environment Variables
-Go to Replit Secrets (🔒 icon) and add:
-```
-DISCORD_TOKEN=your_bot_token_here
+DISCORD_TOKEN=<your_discord_bot_token>
 GUILD_ID=1403310542030114898
-DATABASE_URL=your_postgresql_url
-GITHUB_TOKEN=your_github_token (optional)
-GITHUB_OWNER=robo-nexus (optional)
 ```
 
-### 3. Start the Bot
-```bash
-python main.py
+### 2. Supabase Configuration (REQUIRED!)
+```
+SUPABASE_URL=https://pyedggezqefeeilxdprj.supabase.co
+SUPABASE_SERVICE_KEY=<your_supabase_service_role_key>
 ```
 
-Or use the start script:
-```bash
-bash start.sh
+**Where to find your Supabase Service Key:**
+1. Go to https://supabase.com/dashboard/project/pyedggezqefeeilxdprj
+2. Click "Settings" (gear icon) in the left sidebar
+3. Click "API" 
+4. Copy the "service_role" key (NOT the anon key!)
+5. Paste it as `SUPABASE_SERVICE_KEY` in Replit Secrets
+
+### 3. Optional (for GitHub integration)
+```
+GITHUB_TOKEN=<your_github_personal_access_token>
+GITHUB_OWNER=RoboNexxus
 ```
 
-## If You See Errors
-
-### "Module not found" Error
-```bash
-pip install discord.py requests aiohttp psycopg2-binary
+### 4. Optional (for Google Analytics)
+```
+GA_PROPERTY_ID=<your_property_id>
+GOOGLE_CREDENTIALS_JSON=<your_service_account_json>
 ```
 
-### "Permission denied" Error
-Don't use `./requirements.txt` - that's not executable
-Use: `pip install -r requirements.txt`
+---
 
-### "Database connection failed"
-Check your DATABASE_URL in Secrets is correct
+## Quick Verification
 
-### "Bot token invalid"
-Check your DISCORD_TOKEN in Secrets
+After adding secrets, restart your Replit and check the logs:
 
-## Verify Setup
-
-After starting, you should see:
+✅ **Success looks like:**
 ```
-🤖 RoboNexusBot#1234 is now online!
-Bot ID: 123456789
-Connected to 1 guild(s)
+✅ Configuration validated successfully
+✅ Supabase API initialized with service key
+✅ All 10 command cogs loaded successfully
 ✅ Synced X commands to guild 1403310542030114898
 ```
 
-## Common Replit Commands
-
-```bash
-# Check Python version
-python --version
-
-# List installed packages
-pip list
-
-# Check if bot file exists
-ls -la main.py
-
-# View bot logs
-python main.py
-
-# Stop bot (Ctrl+C)
+❌ **Error looks like:**
 ```
+❌ Configuration error: SUPABASE_SERVICE_KEY environment variable is required!
+```
+
+If you see the error, double-check:
+1. Secret name is exactly `SUPABASE_SERVICE_KEY` (case-sensitive!)
+2. You copied the **service_role** key, not the anon key
+3. You restarted the Replit after adding the secret
+
+---
+
+## Database Setup
+
+After secrets are configured, run this in Supabase SQL Editor:
+
+```sql
+-- Disable RLS so bot can access database
+ALTER TABLE bot_settings DISABLE ROW LEVEL SECURITY;
+ALTER TABLE birthdays DISABLE ROW LEVEL SECURITY;
+ALTER TABLE user_profiles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE auctions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE bids DISABLE ROW LEVEL SECURITY;
+ALTER TABLE teams DISABLE ROW LEVEL SECURITY;
+ALTER TABLE team_categories DISABLE ROW LEVEL SECURITY;
+ALTER TABLE team_members DISABLE ROW LEVEL SECURITY;
+ALTER TABLE competitions DISABLE ROW LEVEL SECURITY;
+```
+
+Or just run `fix_rls.sql` from the repo!
+
+---
+
+## Final Checklist
+
+- [ ] `DISCORD_TOKEN` added to Replit Secrets
+- [ ] `GUILD_ID` added to Replit Secrets
+- [ ] `SUPABASE_URL` added to Replit Secrets
+- [ ] `SUPABASE_SERVICE_KEY` added to Replit Secrets (service_role key!)
+- [ ] RLS disabled on all tables in Supabase
+- [ ] Replit restarted
+- [ ] Bot starts without errors
+- [ ] Commands work in Discord
+
+---
 
 ## Troubleshooting
 
-### Bot starts but commands don't appear
-1. Wait 2-3 minutes for Discord to sync
-2. Restart Discord app
-3. Use `/clear_duplicate_commands` if duplicates appear
+### "SUPABASE_SERVICE_KEY environment variable is required"
+- Make sure the secret name is exactly `SUPABASE_SERVICE_KEY`
+- Restart Replit after adding secrets
+- Check you're using the service_role key, not anon key
 
-### Bot crashes immediately
-1. Check Secrets are set correctly
-2. Check database connection
-3. Look at error message in console
+### "Permission denied for table"
+- Run `fix_rls.sql` in Supabase SQL Editor
+- RLS must be DISABLED for bot to work
 
-### "Application not responding"
-This should be fixed with the async wrapper. If it still happens:
-1. Check database connection is stable
-2. Verify all files were uploaded correctly
-3. Check console for errors
+### "Commands not appearing in Discord"
+- Check `GUILD_ID` is correct
+- Wait 1-2 minutes for Discord to sync
+- Try `/` in Discord to see if commands appear
 
-## Files You Need
+### "Team commands not responding"
+- Make sure RLS is disabled
+- Check `SUPABASE_SERVICE_KEY` is set
+- Verify team_system cog loaded (check logs)
 
-Essential files (must be present):
-- ✅ main.py
-- ✅ bot.py
-- ✅ config.py
-- ✅ async_supabase_wrapper.py
-- ✅ supabase_api.py
-- ✅ team_system.py
-- ✅ commands.py
-- ✅ admin_commands.py
-- ✅ auction.py
-- ✅ welcome_system.py
-- ✅ requirements.txt
+---
 
-Optional files:
-- github_integration.py (if using GitHub features)
-- analytics.py (if using analytics)
-- stats_channel.py (if using stats)
+**You're all set!** 🚀
 
-## Next Steps
+Once you:
+1. Add `SUPABASE_SERVICE_KEY` to Replit Secrets
+2. Run `fix_rls.sql` in Supabase
+3. Restart your bot
 
-1. Install dependencies: `pip install -r requirements.txt`
-2. Set Secrets in Replit
-3. Run: `python main.py`
-4. Configure in Discord: `/set_birthday_channel`, `/set_welcome_channel`
-5. Test: `/create_permanent_team`, `/list_teams`
-
-## Need Help?
-
-Check the main README.md for full documentation.
+Everything should work perfectly!
