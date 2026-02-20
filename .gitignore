@@ -90,3 +90,5 @@ htmlcov/
 # Ignore all .md files except README.md
 *.md
 !README.md
+*.sql
+check_database.py
