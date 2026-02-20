@@ -899,8 +899,6 @@ class TeamSystem(commands.Cog):
             
             view = JoinTeamView(self, team_data['name'], guild_id)
             
-            await interaction.response.defer(ephemeral=True)
-            
             recruitment_msg = await target_channel.send(
                 content="@here **New Team Recruitment!**",
                 embed=embed,
@@ -1350,7 +1348,10 @@ class JoinTeamView(discord.ui.View):
     async def join_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Handle join team button click"""
         try:
-            team_data = self.cog.supabase.get_team_by_name(self.guild_id, self.team_name)
+            # CRITICAL: Defer immediately to prevent timeout
+            await interaction.response.defer(ephemeral=True)
+            
+            team_data = await self.cog.supabase.get_team_by_name(self.guild_id, self.team_name)
             
             if not team_data:
                 await interaction.followup.send(
@@ -1359,7 +1360,7 @@ class JoinTeamView(discord.ui.View):
                 )
                 return
             
-            user_team = self.cog.supabase.get_user_team(self.guild_id, str(interaction.user.id))
+            user_team = await self.cog.supabase.get_user_team(self.guild_id, str(interaction.user.id))
             if user_team:
                 await interaction.followup.send(
                     f"❌ You are already in **{user_team['name']}**!\n"
@@ -1375,7 +1376,7 @@ class JoinTeamView(discord.ui.View):
                 )
                 return
             
-            members = self.cog.supabase.get_team_members(self.guild_id, self.team_name)
+            members = await self.cog.supabase.get_team_members(self.guild_id, self.team_name)
             if len(members) >= team_data['max_members']:
                 await interaction.followup.send(
                     "❌ This team is full!",
@@ -1390,7 +1391,7 @@ class JoinTeamView(discord.ui.View):
                 'user_name': interaction.user.display_name
             }
             
-            if self.cog.supabase.add_team_member(member_data):
+            if await self.cog.supabase.add_team_member(member_data):
                 await interaction.followup.send(
                     f"✅ Welcome to **{self.team_name}**!\n"
                     f"Use `/my_team` to view your team information.",

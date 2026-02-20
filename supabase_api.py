@@ -8,9 +8,13 @@ logger = logging.getLogger(__name__)
 
 class SupabaseAPI:
     def __init__(self):
-        self.url = "https://pyedggezqefeeilxdprj.supabase.co"
-        # Use the service role key for full access
-        self.service_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB5ZWRnZ2V6cWVmZWVpbHhkcHJqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTcwMDMxOSwiZXhwIjoyMDg1Mjc2MzE5fQ.fIDsGoUtPeja6_apWwE7gvE5oymfUR3pZMlmm_Ucs6A"
+        import os
+        # SECURITY FIX: Load from environment variables instead of hardcoding
+        self.url = os.getenv('SUPABASE_URL', 'https://pyedggezqefeeilxdprj.supabase.co')
+        self.service_key = os.getenv('SUPABASE_SERVICE_KEY')
+        
+        if not self.service_key:
+            raise ValueError("SUPABASE_SERVICE_KEY environment variable is required! Please set it in your Replit Secrets.")
         
         self.headers = {
             "apikey": self.service_key,

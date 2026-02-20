@@ -488,7 +488,7 @@ class AdminCommands(commands.Cog):
     @app_commands.command(name="clear_duplicate_commands", description="[ADMIN] Clear duplicate slash commands")
     @app_commands.default_permissions(administrator=True)
     async def clear_duplicate_commands(self, interaction: discord.Interaction):
-        """Resync commands to remove duplicates (doesn't actually clear them)"""
+        """Detect and remove duplicate slash commands, then resync"""
         try:
             # CRITICAL: Defer immediately to prevent timeout
             await interaction.response.defer(ephemeral=True)
@@ -500,31 +500,142 @@ class AdminCommands(commands.Cog):
                 )
                 return
 
-            # Just resync - don't clear!
-            # Clearing removes commands from memory, then sync syncs nothing
-            guild = discord.Object(id=interaction.guild_id)
-            synced = await self.bot.tree.sync(guild=guild)
-
-            embed = discord.Embed(
-                title="✅ Commands Resynced",
-                description=f"Successfully resynced commands.\n\n**{len(synced)}** commands are now available.",
-                color=discord.Color.green()
-            )
-            embed.add_field(
-                name="⚠️ Note",
-                value="It may take a few minutes for changes to appear in Discord.\nTry restarting your Discord app if commands still appear duplicated.",
-                inline=False
-            )
-
-            await interaction.followup.send(embed=embed)
-            logger.info(f"Commands resynced by {interaction.user}: {len(synced)} commands")
-
-        except Exception as e:
-            logger.error(f"Error resyncing commands: {e}")
+            # Send initial feedback
             await interaction.followup.send(
-                f"❌ Error resyncing commands: {str(e)[:100]}",
+                "🔍 Checking for duplicate commands...",
                 ephemeral=True
             )
+
+            guild = discord.Object(id=interaction.guild_id)
+            
+            # Fetch current commands from Discord API
+            fetched_commands = await self.bot.tree.fetch_commands(guild=guild)
+            
+            # Get local tree commands
+            local_commands = self.bot.tree.get_commands(guild=guild)
+            
+            # Detect duplicates by command name
+            fetched_names = [cmd.name for cmd in fetched_commands]
+            local_names = [cmd.name for cmd in local_commands]
+            
+            # Find duplicate names in fetched commands
+            seen = set()
+            duplicates = set()
+            for name in fetched_names:
+                if name in seen:
+                    duplicates.add(name)
+                seen.add(name)
+            
+            # Check if duplicates exist
+            if not duplicates:
+                embed = discord.Embed(
+                    title="✅ No Duplicates Found",
+                    description="No duplicate commands found. Command tree is clean.",
+                    color=discord.Color.green()
+                )
+                embed.add_field(
+                    name="📊 Command Count",
+                    value=f"**{len(fetched_commands)}** commands registered",
+                    inline=False
+                )
+                await interaction.edit_original_response(content=None, embed=embed)
+                logger.info(f"No duplicate commands found by {interaction.user}")
+                return
+            
+            # Duplicates found - report and clear
+            duplicate_list = ", ".join(sorted(duplicates))
+            await interaction.edit_original_response(
+                content=f"⚠️ Found **{len(duplicates)}** duplicate command(s): {duplicate_list}\n\nClearing and resyncing...",
+                embed=None
+            )
+            
+            logger.info(f"Duplicate commands detected by {interaction.user}: {duplicate_list}")
+            
+            # Clear commands from Discord
+            self.bot.tree.clear_commands(guild=guild)
+            await self.bot.tree.sync(guild=guild)
+            
+            # Reload all cogs to repopulate the command tree
+            cog_names = [
+                'team_system',
+                'birthday_commands', 
+                'admin_commands',
+                'dev_commands',
+                'auction_commands',
+                'welcome_system',
+                'stats_channel',
+                'github_integration'
+            ]
+            
+            reload_errors = []
+            for cog_name in cog_names:
+                try:
+                    # Reload the cog (unload then load)
+                    await self.bot.reload_extension(cog_name)
+                except Exception as e:
+                    logger.error(f"Error reloading cog {cog_name}: {e}")
+                    reload_errors.append(f"{cog_name}: {str(e)[:50]}")
+            
+            # Sync the repopulated tree
+            synced = await self.bot.tree.sync(guild=guild)
+            
+            # Verify no duplicates remain
+            final_commands = await self.bot.tree.fetch_commands(guild=guild)
+            final_names = [cmd.name for cmd in final_commands]
+            final_duplicates = set()
+            seen_final = set()
+            for name in final_names:
+                if name in seen_final:
+                    final_duplicates.add(name)
+                seen_final.add(name)
+            
+            # Build success embed
+            embed = discord.Embed(
+                title="✅ Successfully Cleared Duplicates",
+                description=f"Cleared duplicate commands and resynced.\n\n**{len(synced)}** commands registered.",
+                color=discord.Color.green()
+            )
+            
+            embed.add_field(
+                name="🔍 Duplicates Removed",
+                value=duplicate_list,
+                inline=False
+            )
+            
+            if final_duplicates:
+                embed.add_field(
+                    name="⚠️ Warning",
+                    value=f"Some duplicates may still exist: {', '.join(final_duplicates)}",
+                    inline=False
+                )
+            
+            if reload_errors:
+                embed.add_field(
+                    name="⚠️ Cog Reload Errors",
+                    value="\n".join(reload_errors[:5]),  # Limit to 5 errors
+                    inline=False
+                )
+            
+            embed.add_field(
+                name="ℹ️ Note",
+                value="It may take a few minutes for changes to appear in Discord.\nTry restarting your Discord app if needed.",
+                inline=False
+            )
+            
+            await interaction.edit_original_response(content=None, embed=embed)
+            logger.info(f"Commands cleared and resynced by {interaction.user}: {len(synced)} commands")
+
+        except Exception as e:
+            logger.error(f"Error in clear_duplicate_commands: {e}")
+            error_embed = discord.Embed(
+                title="❌ Error Clearing Duplicates",
+                description=f"An error occurred: {str(e)[:200]}",
+                color=discord.Color.red()
+            )
+            try:
+                await interaction.edit_original_response(content=None, embed=error_embed)
+            except:
+                await interaction.followup.send(embed=error_embed, ephemeral=True)
 
 
 

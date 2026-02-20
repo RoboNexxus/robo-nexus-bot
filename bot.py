@@ -47,21 +47,82 @@ class RoboNexusBirthdayBot(commands.Bot):
             # Database is already initialized in postgres_db.py
             logger.info("Database connection ready")
             
-            # Load command cogs
-            await self.load_extension('commands')
-            await self.load_extension('admin_commands')
-            await self.load_extension('help_commands')
-            await self.load_extension('dev_commands')
-            await self.load_extension('github_integration')
-            await self.load_extension('analytics')
-            await self.load_extension('auction')
-            await self.load_extension('welcome_system')
-            await self.load_extension('stats_channel')
-            await self.load_extension('team_system')
-            logger.info("Command cogs loaded successfully")
+            # Define expected cogs for validation
+            expected_cogs = [
+                'commands',
+                'admin_commands', 
+                'help_commands',
+                'dev_commands',
+                'github_integration',
+                'analytics',
+                'auction',
+                'welcome_system',
+                'stats_channel',
+                'team_system'
+            ]
             
-            # Wait for all cogs to finish registering commands
-            await asyncio.sleep(3)
+            # Load command cogs with validation
+            loaded_cogs = []
+            failed_cogs = []
+            
+            for cog_name in expected_cogs:
+                try:
+                    logger.info(f"Loading cog: {cog_name}")
+                    await self.load_extension(cog_name)
+                    
+                    # Verify cog loaded successfully
+                    # Note: Cog class names may differ from module names
+                    # We check if the extension is in the loaded extensions
+                    if cog_name in self.extensions:
+                        logger.info(f"Successfully loaded cog: {cog_name}")
+                        loaded_cogs.append(cog_name)
+                    else:
+                        logger.error(f"Cog {cog_name} failed to load - not found in extensions")
+                        failed_cogs.append(cog_name)
+                        
+                except Exception as e:
+                    logger.error(f"Error loading cog {cog_name}: {e}")
+                    failed_cogs.append(cog_name)
+            
+            # If any cogs failed to load, raise exception to prevent syncing incomplete commands
+            if failed_cogs:
+                error_msg = f"Failed to load cogs: {', '.join(failed_cogs)}"
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
+            
+            logger.info(f"All {len(loaded_cogs)} command cogs loaded successfully")
+            
+            # Validate all expected cogs are in the cogs dictionary
+            for cog_name in expected_cogs:
+                if cog_name not in self.extensions:
+                    error_msg = f"Expected cog {cog_name} not found in loaded extensions"
+                    logger.error(error_msg)
+                    raise RuntimeError(error_msg)
+            
+            # Get all commands from the tree for validation
+            all_commands = list(self.tree.get_commands())
+            command_names = [cmd.name for cmd in all_commands]
+            
+            # Add comprehensive logging for diagnostics
+            logger.info(f"Commands in tree: {len(all_commands)} total")
+            for cmd in all_commands:
+                logger.info(f"  - {cmd.name}")
+            
+            # Check for duplicate commands in the tree
+            if len(command_names) != len(set(command_names)):
+                # Find duplicates
+                seen = set()
+                duplicates = set()
+                for name in command_names:
+                    if name in seen:
+                        duplicates.add(name)
+                    seen.add(name)
+                
+                error_msg = f"Duplicate commands detected in tree: {', '.join(duplicates)}"
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
+            
+            logger.info("Command tree validation passed - no duplicates detected")
             
             # Sync slash commands
             if Config.GUILD_ID:
@@ -71,16 +132,24 @@ class RoboNexusBirthdayBot(commands.Bot):
                 # DON'T clear commands - just sync what we have
                 # The cogs have already registered their commands
                 synced = await self.tree.sync(guild=guild)
-                logger.info(f"✅ Synced {len(synced)} commands to guild {Config.GUILD_ID}")
+                logger.info(f"Synced {len(synced)} commands to guild {Config.GUILD_ID}")
+                
+                # Log synced command names for verification
+                synced_names = [cmd.name for cmd in synced]
+                logger.info(f"Synced commands: {', '.join(synced_names)}")
             else:
                 # Sync globally (takes up to 1 hour to propagate)
                 synced = await self.tree.sync()
-                logger.info(f"✅ Synced {len(synced)} commands globally")
+                logger.info(f"Synced {len(synced)} commands globally")
+                
+                # Log synced command names for verification
+                synced_names = [cmd.name for cmd in synced]
+                logger.info(f"Synced commands: {', '.join(synced_names)}")
             
-            logger.info("Bot setup completed successfully")
+            logger.info("✅ Bot setup completed successfully")
             
         except Exception as e:
-            logger.error(f"Error during bot setup: {e}")
+            logger.error(f"❌ Error during bot setup: {e}")
             raise
     
     async def on_ready(self):

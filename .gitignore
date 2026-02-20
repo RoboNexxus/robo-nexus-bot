@@ -87,6 +87,6 @@ Thumbs.db
 htmlcov/
 
 # Documentation (if contains sensitive info)
-# Uncomment if needed:
-# PRIVATE_*.md
-# *_PRIVATE.md
+# Ignore all .md files except README.md
+*.md
+!README.md

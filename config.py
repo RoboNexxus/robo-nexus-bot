@@ -16,7 +16,8 @@ class Config:
     
     # Database Configuration
     DATABASE_PATH = os.getenv('DATABASE_PATH', 'birthdays.db')
-    DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://postgres:password@helium/heliumdb?sslmode=disable')
+    # SECURITY FIX: Removed default database URL with hardcoded credentials
+    DATABASE_URL = os.getenv('DATABASE_URL')
     
     # Bot Configuration
     BOT_NAME = os.getenv('BOT_NAME', 'Robo Nexus')
@@ -39,5 +40,13 @@ class Config:
         
         if not cls.GUILD_ID:
             print("Warning: GUILD_ID not set. Bot will work globally but slash commands may take longer to sync.")
+        
+        # SECURITY FIX: Validate Discord token format
+        if cls.DISCORD_TOKEN and not cls.DISCORD_TOKEN.startswith(('MT', 'mT')):
+            raise ValueError("DISCORD_TOKEN appears to be invalid (should start with MT)")
+        
+        # Validate DATABASE_URL if using PostgreSQL
+        if cls.DATABASE_URL and not cls.DATABASE_URL.startswith('postgresql://'):
+            print("Warning: DATABASE_URL should start with 'postgresql://'")
         
         return True
