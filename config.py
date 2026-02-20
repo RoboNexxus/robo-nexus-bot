@@ -19,6 +19,10 @@ class Config:
     # SECURITY FIX: Removed default database URL with hardcoded credentials
     DATABASE_URL = os.getenv('DATABASE_URL')
     
+    # Supabase Configuration
+    SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://pyedggezqefeeilxdprj.supabase.co')
+    SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
+    
     # Bot Configuration
     BOT_NAME = os.getenv('BOT_NAME', 'Robo Nexus')
     BIRTHDAY_CHECK_TIME = os.getenv('BIRTHDAY_CHECK_TIME', '09:00')
@@ -48,5 +52,12 @@ class Config:
         # Validate DATABASE_URL if using PostgreSQL
         if cls.DATABASE_URL and not cls.DATABASE_URL.startswith('postgresql://'):
             print("Warning: DATABASE_URL should start with 'postgresql://'")
+        
+        # Validate Supabase configuration
+        if not cls.SUPABASE_SERVICE_KEY:
+            raise ValueError("SUPABASE_SERVICE_KEY environment variable is required! Please set it in your Replit Secrets.")
+        
+        if not cls.SUPABASE_URL:
+            print("Warning: SUPABASE_URL not set, using default")
         
         return True
