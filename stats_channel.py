@@ -249,6 +249,39 @@ class StatsChannel(commands.Cog):
         except Exception as e:
             logger.error(f"Error creating stats channel: {e}")
             return None
+    async def get_or_create_stats_category(self, guild: discord.Guild) -> Optional[discord.CategoryChannel]:
+        """Get or create the STATS category in the guild"""
+        try:
+            # Look for existing STATS category
+            for category in guild.categories:
+                if category.name == "STATS" or category.name == "📊 STATS":
+                    logger.info(f"Found existing STATS category in {guild.name}")
+                    return category
+
+            # Create new STATS category if it doesn't exist
+            logger.info(f"Creating STATS category in {guild.name}")
+            category = await guild.create_category(
+                name="📊 STATS",
+                reason="Stats display category for bot statistics"
+            )
+
+            # Set permissions - everyone can view but not connect
+            await category.set_permissions(
+                guild.default_role,
+                view_channel=True,
+                connect=False
+            )
+
+            logger.info(f"✅ Created STATS category in {guild.name}")
+            return category
+
+        except discord.Forbidden:
+            logger.error(f"❌ Missing permissions to create category in {guild.name}")
+            return None
+        except Exception as e:
+            logger.error(f"❌ Error creating STATS category in {guild.name}: {e}")
+            return None
+
     
     @tasks.loop(minutes=1)  # Update every 1 minute
     async def update_stats_channels(self):

@@ -93,10 +93,8 @@ htmlcov/
 *.sql
 check_database.py
 REPLIT_SETUP.md
-REPLIT_SETUP.md
-REPLIT_SETUP.md
 verify_fix.py
 test_team_commands.py
 test_github_integration_preservation.py
 test_cog_loading_blocking.py
-clear_duplicate_commands.py
+test_all_fixes.py
