@@ -93,6 +93,8 @@ htmlcov/
 !CODEBASE_ANALYSIS.md
 !FIX_SUMMARY.md
 !REPLIT_SETUP.md
+!RAILWAY_DEPLOYMENT.md
+!DEPLOYMENT_CHECKLIST.md
 
 # SQL files - may contain sensitive data
 *.sql
