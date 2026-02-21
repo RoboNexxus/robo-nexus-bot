@@ -1,11 +1,11 @@
 run = "python3 main.py"
 entrypoint = "main.py"
-modules = ["python-3.11"]
+modules = ["bash", "nix", "python-3.11"]
 
 hidden = [".pythonlibs", "__pycache__", ".git"]
 
 [nix]
-channel = "stable-23_11"
+channel = "stable-25_05"
 
 [deployment]
 run = ["python3", "main.py"]
@@ -15,5 +15,33 @@ deploymentTarget = "cloudrun"
 localPort = 8080
 externalPort = 80
 
+[[ports]]
+localPort = 5000
+externalPort = 80
+
 [agent]
 expertMode = true
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start Bot"
+
+[[workflows.workflow]]
+name = "Start Bot"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python main.py"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"

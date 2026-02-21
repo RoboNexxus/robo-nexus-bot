@@ -70,7 +70,7 @@ def ping():
 def run():
     """Run the Flask server"""
     try:
-        app.run(host='0.0.0.0', port=8080, debug=False, use_reloader=False)
+        app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
     except Exception as e:
         logger.error(f"Keep-alive server error: {e}")
 
@@ -80,7 +80,7 @@ def keep_alive():
         t = Thread(target=run)
         t.daemon = True
         t.start()
-        logger.info("Keep-alive server started on port 8080")
+        logger.info("Keep-alive server started on port 5000")
         print("🌐 Keep-alive server started - bot will stay awake on Replit!")
     except Exception as e:
         logger.error(f"Failed to start keep-alive server: {e}")
