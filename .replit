@@ -8,7 +8,7 @@ hidden = [".pythonlibs", "__pycache__", ".git"]
 channel = "stable-23_11"
 
 [deployment]
-run = ["sh", "-c", "python3 main.py"]
+run = ["sh", "-c", "./start.sh"]
 deploymentTarget = "cloudrun"
 ignorePorts = false
 
