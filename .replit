@@ -8,16 +8,12 @@ hidden = [".pythonlibs", "__pycache__", ".git"]
 channel = "stable-23_11"
 
 [deployment]
-run = ["sh", "-c", "./start.sh"]
+run = ["python3", "main.py"]
 deploymentTarget = "cloudrun"
-ignorePorts = false
 
 [[ports]]
 localPort = 8080
 externalPort = 80
-
-[env]
-PYTHONUNBUFFERED = "1"
 
 [agent]
 expertMode = true
