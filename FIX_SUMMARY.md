@@ -109,3 +109,18 @@ February 21, 2026
    - Method now properly creates or finds the "📊 STATS" category
    - Sets correct permissions (view but not connect)
    - Handles permission errors gracefully
+
+2. **Command Sync Issue**: Bot shows "Synced 0 commands" and only 17 commands appear in Discord instead of 59
+   - **Root Cause**: Bot missing `applications.commands` scope or commands not syncing properly
+   - **Solution**: Created diagnostic and fix scripts
+   - **Files Created**:
+     - `diagnose_commands.py` - Comprehensive diagnostics
+     - `force_sync_commands.py` - Force re-sync all commands
+     - `generate_invite_url.py` - Generate correct invite URL with all scopes
+     - `COMMAND_SYNC_FIX.md` - Complete fix guide
+   - **Fix Steps**:
+     1. Run `python diagnose_commands.py` to identify issue
+     2. Run `python generate_invite_url.py` to get correct invite URL
+     3. Kick bot and re-invite with new URL (if missing scopes)
+     4. Run `python force_sync_commands.py` to sync commands
+     5. Wait 1-2 minutes for Discord to update
