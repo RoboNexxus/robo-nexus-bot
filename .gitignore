@@ -87,14 +87,21 @@ Thumbs.db
 htmlcov/
 
 # Documentation (if contains sensitive info)
-# Ignore all .md files except README.md
+# Allow important documentation files
 *.md
 !README.md
+!CODEBASE_ANALYSIS.md
+!FIX_SUMMARY.md
+!REPLIT_SETUP.md
+
+# SQL files - may contain sensitive data
 *.sql
+
+# Database check scripts
 check_database.py
-REPLIT_SETUP.md
+
+# Test files - don't commit to production
+test_*.py
 verify_fix.py
-test_team_commands.py
-test_github_integration_preservation.py
-test_cog_loading_blocking.py
+clear_duplicate_commands.py
 test_all_fixes.py
