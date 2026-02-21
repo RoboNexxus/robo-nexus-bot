@@ -71,8 +71,12 @@ class TeamSystem(commands.Cog):
             embed.add_field(name="🏆 Categories", value="None set", inline=True)
         
         # Team Leader
-        leader = guild.get_member(int(team_data['leader_id']))
-        leader_name = leader.mention if leader else "Unknown"
+        leader_id = team_data['leader_id']
+        if leader_id.startswith('external_'):
+            leader_name = team_data.get('leader_name', 'External Leader')
+        else:
+            leader = guild.get_member(int(leader_id))
+            leader_name = leader.mention if leader else "Unknown"
         embed.add_field(name="👑 Leader", value=leader_name, inline=True)
         
         # Member Count
@@ -91,19 +95,43 @@ class TeamSystem(commands.Cog):
         # Team Members List
         if members:
             members_list = []
-            for member_data in members[:10]:
-                member = guild.get_member(int(member_data['user_id']))
-                if member:
-                    members_list.append(f"• {member.mention}")
+            for member_data in members:  # Show ALL members
+                user_id = member_data['user_id']
+                if user_id.startswith('external_'):
+                    # External member (non-Discord)
+                    members_list.append(f"• {member_data['user_name']} (External)")
                 else:
-                    members_list.append(f"• {member_data['user_name']}")
+                    # Discord member
+                    try:
+                        member = guild.get_member(int(user_id))
+                        if member:
+                            members_list.append(f"• {member.mention}")
+                        else:
+                            members_list.append(f"• {member_data['user_name']} (Left server)")
+                    except ValueError:
+                        # Invalid user_id format
+                        members_list.append(f"• {member_data['user_name']} (Invalid ID)")
             
             if members_list:
-                embed.add_field(
-                    name="🔧 Team Members",
-                    value="\n".join(members_list),
-                    inline=False
-                )
+                # Split into multiple fields if too many members (Discord limit: 1024 chars per field)
+                members_text = "\n".join(members_list)
+                if len(members_text) <= 1024:
+                    embed.add_field(
+                        name=f"🔧 Team Members ({len(members)})",
+                        value=members_text,
+                        inline=False
+                    )
+                else:
+                    # Split into chunks
+                    chunk_size = 10
+                    for i in range(0, len(members_list), chunk_size):
+                        chunk = members_list[i:i+chunk_size]
+                        field_name = f"🔧 Team Members ({i+1}-{min(i+chunk_size, len(members))} of {len(members)})"
+                        embed.add_field(
+                            name=field_name,
+                            value="\n".join(chunk),
+                            inline=False
+                        )
         
         # Requirements
         if team_data.get('requirements'):
@@ -716,16 +744,33 @@ class TeamSystem(commands.Cog):
             app_commands.Choice(name="⏱️ Temporary Teams", value="temporary"),
         ]
     )
+    @app_commands.command(name="list_teams", description="List all teams in the server")
+    @app_commands.describe(
+        category="Filter by competition category",
+        team_type="Filter by team type"
+    )
+    @app_commands.choices(category=[
+        app_commands.Choice(name="⚔️ Robo War", value="Robo War"),
+        app_commands.Choice(name="⚽ Robo Soccer", value="Robo Soccer"),
+        app_commands.Choice(name="🚁 Drone", value="Drone"),
+        app_commands.Choice(name="💡 Innovation", value="Innovation"),
+        app_commands.Choice(name="🛤️ Line Follower", value="Line Follower"),
+        app_commands.Choice(name="🏁 Robo Race", value="Robo Race"),
+    ])
+    @app_commands.choices(team_type=[
+        app_commands.Choice(name="♾️ Permanent Teams", value="permanent"),
+        app_commands.Choice(name="⏱️ Temporary Teams", value="temporary"),
+    ])
     async def list_teams(
         self, 
         interaction: discord.Interaction, 
         category: Optional[app_commands.Choice[str]] = None,
         team_type: Optional[app_commands.Choice[str]] = None
     ):
-        """List all teams"""
+        """List all teams (PUBLIC MESSAGE)"""
         try:
-            # CRITICAL: Defer immediately to prevent timeout
-            await interaction.response.defer(ephemeral=True)
+            # CRITICAL: Defer immediately - PUBLIC message
+            await interaction.response.defer(ephemeral=False)
             
             guild_id = str(interaction.guild_id)
             
@@ -735,7 +780,7 @@ class TeamSystem(commands.Cog):
                 await interaction.followup.send(
                     "❌ No teams have been created yet!\n"
                     "Use `/create_permanent_team` or `/create_temp_team` to create the first team!",
-                    ephemeral=True
+                    ephemeral=False
                 )
                 return
             
@@ -756,7 +801,7 @@ class TeamSystem(commands.Cog):
             if not teams:
                 await interaction.followup.send(
                     f"❌ No teams found with the selected filters!",
-                    ephemeral=True
+                    ephemeral=False
                 )
                 return
             
@@ -784,8 +829,15 @@ class TeamSystem(commands.Cog):
             }
             
             for team in teams[:25]:  # Discord limit
-                leader = interaction.guild.get_member(int(team['leader_id']))
-                leader_name = leader.display_name if leader else "Unknown"
+                leader_id = team['leader_id']
+                if leader_id.startswith('external_'):
+                    leader_name = team.get('leader_name', 'External Leader')
+                else:
+                    try:
+                        leader = interaction.guild.get_member(int(leader_id))
+                        leader_name = leader.display_name if leader else "Unknown"
+                    except ValueError:
+                        leader_name = "Unknown"
                 
                 members = await self.supabase.get_team_members(guild_id, team['name'])
                 member_count = len(members)
@@ -814,13 +866,13 @@ class TeamSystem(commands.Cog):
             
             embed.set_footer(text=f"Total Teams: {len(teams)}")
             
-            await interaction.followup.send(embed=embed, ephemeral=True)
+            await interaction.followup.send(embed=embed, ephemeral=False)
             
         except Exception as e:
-            logger.error(f"Error listing teams: {e}")
+            logger.error(f"Error listing teams: {e}", exc_info=True)
             await interaction.followup.send(
                 f"❌ Error: {str(e)}",
-                ephemeral=True
+                ephemeral=False
             )
     
     @app_commands.command(name="leave_team", description="Leave your current team")
@@ -854,12 +906,14 @@ class TeamSystem(commands.Cog):
                     ephemeral=True
                 )
                 
-                leader = interaction.guild.get_member(int(user_team['leader_id']))
-                if leader:
+                leader_id = user_team['leader_id']
+                if not leader_id.startswith('external_'):
                     try:
-                        await leader.send(
-                            f"📢 **{interaction.user.display_name}** has left your team **{user_team['name']}**."
-                        )
+                        leader = interaction.guild.get_member(int(leader_id))
+                        if leader:
+                            await leader.send(
+                                f"📢 **{interaction.user.display_name}** has left your team **{user_team['name']}**."
+                            )
                     except:
                         pass
                 
@@ -1443,12 +1497,14 @@ class JoinTeamView(discord.ui.View):
                     ephemeral=True
                 )
                 
-                leader = interaction.guild.get_member(int(team_data['leader_id']))
-                if leader:
+                leader_id = team_data['leader_id']
+                if not leader_id.startswith('external_'):
                     try:
-                        await leader.send(
-                            f"🎉 **{interaction.user.display_name}** has joined your team **{self.team_name}**!"
-                        )
+                        leader = interaction.guild.get_member(int(leader_id))
+                        if leader:
+                            await leader.send(
+                                f"🎉 **{interaction.user.display_name}** has joined your team **{self.team_name}**!"
+                            )
                     except:
                         pass
                 
