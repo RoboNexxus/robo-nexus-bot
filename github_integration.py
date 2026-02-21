@@ -9,6 +9,7 @@ import logging
 import requests
 import json
 import os
+import asyncio
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List
 
@@ -25,20 +26,29 @@ class GitHubIntegration(commands.Cog):
         # Repositories will be fetched dynamically from GitHub
         self.repositories = []
         
-        # Fetch repositories on initialization
-        if self.github_token:
-            self._fetch_repositories()
-        
+        # Repository fetching and commit monitoring will be started in cog_load()
         self.last_commit_check = datetime.now()
         
-        # Start commit monitoring
+        logger.info(f"GitHub integration initialized (repositories will be fetched asynchronously)")
+    
+    async def cog_load(self):
+        """
+        Async initialization hook called after __init__().
+        This is where we perform async operations like fetching repositories.
+        """
+        # Fetch repositories asynchronously
+        if self.github_token:
+            await self._fetch_repositories()
+        
+        # Start commit monitoring after repositories are fetched
         if self.github_token and self.repositories:
             self.check_commits.start()
+            logger.info(f"Started commit monitoring for {len(self.repositories)} repositories")
         
-        logger.info(f"GitHub integration initialized for {len(self.repositories)} repositories")
+        logger.info(f"GitHub integration fully loaded with {len(self.repositories)} repositories")
     
-    def _fetch_repositories(self):
-        """Fetch all repositories from the organization"""
+    async def _fetch_repositories(self):
+        """Fetch all repositories from the organization (async to prevent blocking)"""
         try:
             logger.info(f"Attempting to fetch repositories from organization: {self.repo_owner}")
             
@@ -55,7 +65,16 @@ class GitHubIntegration(commands.Cog):
             }
             
             logger.info(f"Making request to: {url}")
-            response = requests.get(url, headers=headers, params=params, timeout=10)
+            
+            # Run the synchronous HTTP request in a thread pool to avoid blocking the event loop
+            # This follows the pattern established in async_supabase_wrapper.py
+            response = await asyncio.to_thread(
+                requests.get,
+                url,
+                headers=headers,
+                params=params,
+                timeout=10
+            )
             
             logger.info(f"Response status code: {response.status_code}")
             
