@@ -27,10 +27,10 @@ def generate_invite_url():
     permissions.manage_messages = True
     permissions.embed_links = True
     permissions.attach_files = True
-    permissions.mention_everyone = True
+    permissions.mention_everyone = True  # For birthday @everyone mentions
     permissions.add_reactions = True
-    permissions.manage_roles = True
-    permissions.manage_channels = True
+    permissions.manage_roles = True  # For welcome system class roles
+    permissions.manage_channels = True  # For stats channel creation
     permissions.view_channel = True
     permissions.manage_guild = True
     permissions.create_instant_invite = True
@@ -58,6 +58,14 @@ def generate_invite_url():
     print("   b. Use this new URL to re-invite it")
     print("   c. Run 'python force_sync_commands.py' after re-inviting")
     print("\n4. After re-inviting, wait 1-2 minutes for commands to appear")
+    print("\n📋 PERMISSIONS INCLUDED:")
+    print("   ✅ Send Messages - All commands")
+    print("   ✅ Embed Links - All responses")
+    print("   ✅ Mention @everyone - Birthday announcements")
+    print("   ✅ Manage Channels - Stats channel creation")
+    print("   ✅ Manage Roles - Welcome system class roles")
+    print("   ✅ DM Users - Team/auction notifications")
+    print("   ✅ And more... (see BOT_PERMISSIONS_CHECKLIST.md)")
     print("=" * 60)
     
     # Also show the permissions value

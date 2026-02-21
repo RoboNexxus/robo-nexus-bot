@@ -199,22 +199,51 @@ class RoboNexusBirthdayBot(commands.Bot):
                 # Sync to specific guild for faster updates during development
                 guild = discord.Object(id=int(Config.GUILD_ID))
                 
-                # DON'T clear commands - just sync what we have
-                # The cogs have already registered their commands
+                # Check if we should force a clean sync (useful for fixing sync issues)
+                import os
+                force_clean_sync = os.getenv('FORCE_CLEAN_SYNC', 'false').lower() == 'true'
+                
+                if force_clean_sync:
+                    logger.info("🔄 FORCE_CLEAN_SYNC enabled - clearing and re-syncing all commands...")
+                    
+                    # Clear existing commands from Discord
+                    self.tree.clear_commands(guild=guild)
+                    await self.tree.sync(guild=guild)
+                    logger.info("✅ Cleared existing commands from Discord")
+                    
+                    # Re-add commands from cogs
+                    logger.info("📋 Re-registering commands from cogs...")
+                    for cog in self.cogs.values():
+                        for command in cog.get_app_commands():
+                            self.tree.add_command(command, guild=guild)
+                    
+                    # Verify commands in tree
+                    all_commands = list(self.tree.get_commands(guild=guild))
+                    logger.info(f"📋 Commands in tree after re-registration: {len(all_commands)}")
+                
+                # Sync commands to Discord
                 synced = await self.tree.sync(guild=guild)
                 logger.info(f"Synced {len(synced)} commands to guild {Config.GUILD_ID}")
                 
                 # Log synced command names for verification
-                synced_names = [cmd.name for cmd in synced]
-                logger.info(f"Synced commands: {', '.join(synced_names)}")
+                if len(synced) > 0:
+                    synced_names = [cmd.name for cmd in synced]
+                    logger.info(f"Synced commands: {', '.join(synced_names)}")
+                else:
+                    logger.error("⚠️ WARNING: Synced 0 commands! Bot may be missing 'applications.commands' scope!")
+                    logger.error("⚠️ Solution: Re-invite bot with both 'bot' AND 'applications.commands' scopes")
             else:
                 # Sync globally (takes up to 1 hour to propagate)
                 synced = await self.tree.sync()
                 logger.info(f"Synced {len(synced)} commands globally")
                 
                 # Log synced command names for verification
-                synced_names = [cmd.name for cmd in synced]
-                logger.info(f"Synced commands: {', '.join(synced_names)}")
+                if len(synced) > 0:
+                    synced_names = [cmd.name for cmd in synced]
+                    logger.info(f"Synced commands: {', '.join(synced_names)}")
+                else:
+                    logger.error("⚠️ WARNING: Synced 0 commands! Bot may be missing 'applications.commands' scope!")
+                    logger.error("⚠️ Solution: Re-invite bot with both 'bot' AND 'applications.commands' scopes")
             
             logger.info("✅ Bot setup completed successfully")
             
