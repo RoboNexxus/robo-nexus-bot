@@ -18,6 +18,3 @@ externalPort = 80
 
 [env]
 PYTHONUNBUFFERED = "1"
-
-[agent]
-expertMode = true
