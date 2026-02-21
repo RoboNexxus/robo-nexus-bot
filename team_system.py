@@ -725,25 +725,6 @@ class TeamSystem(commands.Cog):
                 ephemeral=True
             )
     
-    @app_commands.command(name="list_teams", description="View all teams in the robotics club")
-    @app_commands.describe(
-        category="Filter by competition category (optional)",
-        team_type="Filter by team type (optional)"
-    )
-    @app_commands.choices(
-        category=[
-            app_commands.Choice(name="⚔️ Robo War", value="Robo War"),
-            app_commands.Choice(name="⚽ Robo Soccer", value="Robo Soccer"),
-            app_commands.Choice(name="🚁 Drone", value="Drone"),
-            app_commands.Choice(name="💡 Innovation", value="Innovation"),
-            app_commands.Choice(name="🛤️ Line Follower", value="Line Follower"),
-            app_commands.Choice(name="🏁 Robo Race", value="Robo Race"),
-        ],
-        team_type=[
-            app_commands.Choice(name="♾️ Permanent Teams", value="permanent"),
-            app_commands.Choice(name="⏱️ Temporary Teams", value="temporary"),
-        ]
-    )
     @app_commands.command(name="list_teams", description="List all teams in the server")
     @app_commands.describe(
         category="Filter by competition category",
