@@ -1165,23 +1165,51 @@ class TeamSystem(commands.Cog):
             await interaction.response.defer(ephemeral=True)
             
             guild_id = str(interaction.guild_id)
+            key = f'team_channel_{guild_id}'
+            channel_id = str(channel.id)
+
+            logger.info(f"Attempting to set team channel: guild_id={guild_id}, key={key}, channel_id={channel_id}")
 
             # Save to database
-            if await self.supabase.set_setting(f'team_channel_{guild_id}', str(channel.id)):
+            result = await self.supabase.set_setting(key, channel_id)
+            
+            logger.info(f"Database set_setting result: {result}")
+            
+            if result:
+                # Verify it was saved by reading it back
+                saved_value = await self.supabase.get_setting(key)
+                logger.info(f"Verification read: saved_value={saved_value}")
+                
+                if saved_value == channel_id:
+                    embed = discord.Embed(
+                        title="✅ Team Channel Set",
+                        description=f"Team announcements will now be sent to {channel.mention}",
+                        color=discord.Color.green()
+                    )
+                    embed.add_field(name="Channel ID", value=channel_id, inline=False)
+                    embed.add_field(name="Verification", value="✅ Confirmed in database", inline=False)
+                    await interaction.followup.send(embed=embed, ephemeral=True)
+                    logger.info(f"Team channel set to {channel.name} by {interaction.user}")
+                else:
+                    embed = discord.Embed(
+                        title="⚠️ Partial Success",
+                        description=f"Channel was saved but verification failed.",
+                        color=discord.Color.orange()
+                    )
+                    embed.add_field(name="Expected", value=channel_id, inline=True)
+                    embed.add_field(name="Got", value=str(saved_value), inline=True)
+                    await interaction.followup.send(embed=embed, ephemeral=True)
+                    logger.warning(f"Team channel verification mismatch: expected={channel_id}, got={saved_value}")
+            else:
                 embed = discord.Embed(
-                    title="✅ Team Channel Set",
-                    description=f"Team announcements will now be sent to {channel.mention}",
-                    color=discord.Color.green()
+                    title="❌ Failed to Set Team Channel",
+                    description="Database operation returned False. Check bot logs for details.",
+                    color=discord.Color.red()
                 )
                 await interaction.followup.send(embed=embed, ephemeral=True)
-                logger.info(f"Team channel set to {channel.name} by {interaction.user}")
-            else:
-                await interaction.followup.send(
-                    "❌ Failed to set team channel. Please try again.",
-                    ephemeral=True
-                )
+                logger.error(f"Failed to set team channel: set_setting returned False")
         except Exception as e:
-            logger.error(f"Error setting team channel: {e}")
+            logger.error(f"Error setting team channel: {e}", exc_info=True)
             await interaction.followup.send(
                 f"❌ Error: {str(e)}",
                 ephemeral=True
@@ -1433,6 +1461,81 @@ class JoinTeamView(discord.ui.View):
             
         except Exception as e:
             logger.error(f"Error joining team: {e}")
+            await interaction.followup.send(
+                f"❌ Error: {str(e)}",
+                ephemeral=True
+            )
+    
+    @app_commands.command(name="debug_team_channel", description="[ADMIN] Debug team channel configuration")
+    @app_commands.default_permissions(administrator=True)
+    async def debug_team_channel(self, interaction: discord.Interaction):
+        """Debug command to check team channel configuration"""
+        try:
+            await interaction.response.defer(ephemeral=True)
+            
+            guild_id = str(interaction.guild_id)
+            key = f'team_channel_{guild_id}'
+            
+            # Try to get the setting
+            team_channel_id = await self.supabase.get_setting(key)
+            
+            embed = discord.Embed(
+                title="🔍 Team Channel Debug Info",
+                color=discord.Color.blue()
+            )
+            
+            embed.add_field(
+                name="Guild ID",
+                value=guild_id,
+                inline=False
+            )
+            
+            embed.add_field(
+                name="Setting Key",
+                value=f"`{key}`",
+                inline=False
+            )
+            
+            if team_channel_id:
+                embed.add_field(
+                    name="Stored Channel ID",
+                    value=team_channel_id,
+                    inline=False
+                )
+                
+                # Try to get the channel
+                channel = interaction.guild.get_channel(int(team_channel_id))
+                if channel:
+                    embed.add_field(
+                        name="Channel Found",
+                        value=f"✅ {channel.mention}",
+                        inline=False
+                    )
+                    embed.color = discord.Color.green()
+                else:
+                    embed.add_field(
+                        name="Channel Found",
+                        value="❌ Channel not found (may have been deleted)",
+                        inline=False
+                    )
+                    embed.color = discord.Color.red()
+            else:
+                embed.add_field(
+                    name="Stored Channel ID",
+                    value="❌ Not set in database",
+                    inline=False
+                )
+                embed.color = discord.Color.red()
+                embed.add_field(
+                    name="Solution",
+                    value="Use `/set_team_channel` to configure",
+                    inline=False
+                )
+            
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            
+        except Exception as e:
+            logger.error(f"Error in debug_team_channel: {e}")
             await interaction.followup.send(
                 f"❌ Error: {str(e)}",
                 ephemeral=True
